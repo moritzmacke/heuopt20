@@ -1,0 +1,31 @@
+\documentclass{scrartcl}
+\usepackage[shortlabels]{enumitem}
+\usepackage[ngerman]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{mathtools}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{soul}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usetikzlibrary{positioning}
+\usetikzlibrary{arrows}
+
+\begin{document}
+	\begin{enumerate}
+		\item ...
+		\item Given is a (possibly not complete) graph $G=(V,E)$ and edge weigths $d_{i,j}$ for $(i,j) \in E$. To make the graph complete, an additional set of edges $E'$ is defined, consisting of all edges that are not alread in $E$, and we set $d_{i,j} = M$ for $(i,j) \in E'$. We want to calculate a value for $M$ so that any solution that requires traversing an edge from $E'$ is worse than all solutions that do not.
+		
+		A solution must visit $|V| + 1$ vertices (every node once, the starting node twice), so it always consists of $|V|$ distinct edges. A definite upper bound on the objective value of a valid solution can therefore be obtained via $E_{|V|}^+$ and $E_{|V|}^-$, which are the $|V|$ edges with the largest positive and smallest negative weights, respectively.
+		\[ U(G) = \max\left( \left| \sum_{(i,j) \in E_{|V|}^+}{d_{i,j}} \right|, \left| \sum_{(i,j) \in E_{|V|}^-}{d_{i,j}} \right| \right) \]
+		
+		Meanwhile, the lower bound on the objective value of a solution containing an edge with weight $M > 0$ can be found by assuming all other edges have the smallest negative weights possible.
+		\[ L(G,M) = M + \sum_{(i,j) \in E_{|V|-1}^-}{d_{i,j}} \]
+		
+		Now we just need to find $M$ so that the disequality $L(G,M) > U(G)$ is satisfied:
+		\begin{align*}
+			M + \sum_{(i,j) \in E_{|V|-1}^-}{d_{i,j}} &> \max\left( \left| \sum_{(i,j) \in E_{|V|}^+}{d_{i,j}} \right|, \left| \sum_{(i,j) \in E_{|V|}^-}{d_{i,j}} \right| \right)\\
+			M &> \max\left( \left| \sum_{(i,j) \in E_{|V|}^+}{d_{i,j}} \right|, \left| \sum_{(i,j) \in E_{|V|}^-}{d_{i,j}} \right| \right) - \sum_{(i,j) \in E_{|V|-1}^-}{d_{i,j}}
+		\end{align*}
+	\end{enumerate}
+\end{document}
