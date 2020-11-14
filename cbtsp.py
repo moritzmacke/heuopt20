@@ -21,6 +21,7 @@ class CBTSPInstance:
     Attributes
         - n: 
         - weights: 
+        - edges: 
         - valid_threshold
     """
 
@@ -53,6 +54,7 @@ class CBTSPInstance:
         self.weights = weights
         self.n = n
         self.valid_threshold = maxw
+        self.edges = edges
 
     def __repr__(self):
         """Write out the instance data."""
@@ -104,12 +106,71 @@ class CBTSPSolution(PermutationSolution):
 
         #implment construction heuristic
 
-
-        Here we just call initialize.
         """
-        self.initialize(par)
+        if par == 0:
+            self.initialize(par) # random order of nodes
+        else:
+            self.insert_const_heuristic(True)
 
-
+    def insert_const_heuristic(self, select_random=False):
+        """Starts with two nodes cycle and adds new nodes incrementally between
+        those two that yields best objective function
+        Does not work great the way it is, because a selected next point can
+        force you to choose an invalid edge to insert in current tour...
+        """
+        
+        k = 2
+        w = self.inst.weights
+        n = self.inst.n
+        
+        #start with shortest edge, is not necessesarily best though?
+        edges = sorted(self.inst.edges, key = lambda e: abs(e[2]))
+#        print(edges)
+        p1 = edges[0][0]
+        p2 = edges[0][1]
+        newx = [p1,p2]
+        ps = [p for p in range(n) if p not in newx]
+        random.shuffle(ps)
+        
+#        print(ps)
+        
+        cur_obj = 2*w[p1][p2]
+ #       print(cur_obj)
+        
+        for k in range(2,n):
+            if select_random:
+                p = ps.pop()
+            else: #select farthest point for next insert
+                #does not seem to work well though and is slow...
+                farthest_w = 0
+                farthest_p = None
+                for p in ps:
+                    best_w = min([ abs(w[p][q]) for q in newx])
+                    if best_w > farthest_w:
+                        farthest_w = best_w
+                        farthest_p = p
+#                    print("{} closest dist: {}".format(p, best_w))
+                p = farthest_p
+                ps.remove(p)
+            best_j = 0
+            p1 = newx[0]
+            p2 = newx[1]
+            best_delta = w[p1][p] + w[p][p2] - w[p1][p2]
+#            print("obj insert {} between {} and {}: {}".format(p, p1, p2, best_delta+cur_obj))
+            for j in range(1,k):
+                p1 = newx[j]
+                p2 = newx[(j+1)%k]
+                delta = w[p1][p] + w[p][p2] - w[p1][p2]
+#                print("obj insert {} between {} and {}: {}".format(p, p1,p2,delta+cur_obj))
+                if abs(cur_obj+delta) < abs(cur_obj+best_delta):
+                    best_j = j
+                    best_delta = delta
+            newx.insert(best_j+1, p)
+            cur_obj += best_delta
+#            print(newx)
+        
+        self.x[:] = newx
+        self.invalidate()
 
 
     def is_better(self, other: "Solution") -> bool:
@@ -226,38 +287,3 @@ class CBTSPSolution(PermutationSolution):
     def crossover(self, other: 'CBTSPSolution') -> 'CBTSPSolution':
         """Perform edge recombination."""
         return self.edge_recombination(other)
-
-if __name__ == '__main__':
-    from pymhlib.settings import parse_settings
-    parse_settings()
-    
-    inst = CBTSPInstance("instances/0010.txt")
-    
-        
-    print(inst)
-    
-    sol = CBTSPSolution(inst)   
-    print(sol.obj())
-    
-    
-    
-    init_logger()
-    logger = logging.getLogger("pymhlib")
-    logger.info("...")
-    
-    
-    
-#    (self, sol: Solution, meths_ch: List[Method], meths_li: List[Method], meths_sh: List[Method],
-#                 own_settings: dict = None, consider_initial_sol=False):
-    alg = GVNS(sol, [Method(f"ch0", CBTSPSolution.construct, 0)], [Method(f"li1", CBTSPSolution.local_improve, 1)], [Method(f"sh5", CBTSPSolution.shaking, 5)], {'mh_checkit': False, 'mh_titer': -100, 'mh_tciter': -1, 'mh_ttime': 10, 'mh_tctime': -1, 'mh_tobj': -1, 'mh_lnewinc': True, 'mh_lfreq': 0} )
-    
-    alg.run()
-    
-    
-    print(sol)
-    print(sol.obj())
-    
-    alg.method_statistics()
-    alg.main_results()
-    
-#    run_optimization('CBTSP', CBTSPInstance, CBTSPSolution, "instances/0010.txt")
