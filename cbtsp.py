@@ -109,6 +109,8 @@ class CBTSPSolution(PermutationSolution):
         """
         if par == 0:
             self.initialize(par) # random order of nodes
+        elif par == 1:
+            self.nn_const_heuristic_single(0)
         else:
             self.insert_const_heuristic(True)
 
@@ -119,7 +121,6 @@ class CBTSPSolution(PermutationSolution):
         force you to choose an invalid edge to insert in current tour...
         """
         
-        k = 2
         w = self.inst.weights
         n = self.inst.n
         
@@ -172,6 +173,39 @@ class CBTSPSolution(PermutationSolution):
         self.x[:] = newx
         self.invalidate()
 
+    def nn_const_heuristic_single(self, starting_point):
+        """Nearest neighbor-like heuristic, minimze cost of adding new point to tour.
+        For single starting point
+        """
+        
+        w = self.inst.weights
+        n = self.inst.n
+        
+        x = [starting_point]
+        ps = [q for q in range(n) if q != starting_point]
+        
+#        print(ps)
+        
+        cur_edge_sum = 0 #doesn't count return edge to close tour
+ #       print(cur_obj)
+        
+        for k in range(1,n):
+            p0, p = x[0], x[k-1]
+            best_q = ps[0]
+            best_new_obj = cur_edge_sum + w[p][best_q] + w[best_q][p0] 
+            for q in ps:
+                new_obj = cur_edge_sum + w[p][q] + w[q][p0]
+#                print("add {} to tour: {}".format(q, new_obj))
+                if abs(new_obj) < abs(best_new_obj):
+                    best_q = q
+                    best_new_obj = new_obj
+            x += [best_q]
+            cur_edge_sum += w[p][best_q]
+            ps.remove(best_q)
+#            print(x, cur_edge_sum + w[best_q][p0], ps)
+        
+        self.x[:] = x
+        self.invalidate()
 
     def is_better(self, other: "Solution") -> bool:
         """Return True if the current solution is better in terms of the objective function than the other."""
