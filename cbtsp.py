@@ -50,7 +50,7 @@ class CBTSPInstance:
         for (n1, n2, w) in edges:
 #            print(n1,n2,w)
             weights[n1][n2] = weights[n2][n1] = w #
-
+            
         self.weights = weights
         self.n = n
         self.valid_threshold = maxw
@@ -120,6 +120,8 @@ class CBTSPSolution(PermutationSolution):
             self.nn_const_heuristic_single(0)
         elif par == 2:
             self.edge_const_heuristic(False)
+        elif par == 3:
+            self.hamilton_const_heuristic()
         else:
             self.insert_const_heuristic(True)
 
@@ -271,7 +273,6 @@ class CBTSPSolution(PermutationSolution):
         # construct tour from fragments, will have to add invalid edges
         
         # this whole procedure is pretty ugly and probably not correct...
-        # yeah some bugs..
         x = []
         visited = [False for i in range(n)]
         for i in range(n):
@@ -321,6 +322,65 @@ class CBTSPSolution(PermutationSolution):
         self.x[:] = x
         self.invalidate()
 
+
+    def hamilton_const_heuristic(self):
+        """
+        try to find hamiltonian path, ignore weights
+        incomplete
+        """
+        n = self.inst.n
+        #adjacency list
+        adj = [set([]) for i in range(n)]
+        for (n1, n2, w) in self.inst.edges:
+            adj[n1].add(n2)
+            adj[n2].add(n1)
+        
+#        print(adj)
+#        print([len(l) for l in adj])
+        
+        visited = [False for i in range(n)]
+        
+        es = sorted([{'idx': i, 'ns': l} for (i,l) in enumerate(adj)], key=lambda e: -len(e['ns']))
+        
+#        print(es)
+                            
+        path = []
+        last = es[0]['idx']
+        #possible current points
+        for i in range(n):
+            visited[last] = True
+            path.append(last)
+            for p in adj[last]:
+                adj[p].remove(last)
+            
+#            print("adj", adj)
+            nxt = None
+            candidates = sorted([p for p in adj[last] ], key=lambda p: len(adj[p])) #neighbors, sort by degree, pick lowest degree
+            adj[last] = {}
+            print("next candidates", candidates)
+            for q in candidates: #does testing neighbors do anything? seems to almost always choose the first point?
+                print("try", q)
+                visited[q] = True #for sake of neighbor test
+                ok = True # what if last?
+                for p in adj[q]: #any neighbor unreachable? does this actually test it?
+                    s = sum(1 for i in adj[p] if not visited[i])
+#                    print(p, "->", s)
+                    if s == 0 and len(path) < n-2:  #it's okay if we are at last two points?
+                        ok = False
+                        break
+                visited[q] = False #
+                if ok:
+                    nxt = q
+                    break
+            if nxt == None:
+                break
+            last = nxt
+            print("choose", last)
+        
+        print(path, len(path))
+        
+        self.x[:] = path + [i for i in range(n) if not visited[i]]
+        self.invalidate()
 
     def is_better(self, other: "Solution") -> bool:
         """Return True if the current solution is better in terms of the objective function than the other."""

@@ -41,7 +41,8 @@ if __name__ == '__main__':
     solution = CBTSPSolution(instance)
     
     if settings.alg == 'just_const':
-        solution.construct(2, None)
+        solution.construct(3, None)
+        solution.check()
     elif settings.alg == 'just_rconst':
         raise NotImplementedError
     elif settings.alg == 'grasp':
@@ -49,7 +50,7 @@ if __name__ == '__main__':
     elif settings.alg == 'lsearch':
         raise NotImplementedError
     elif settings.alg == 'gvns':
-        alg = GVNS(solution, [Method(f"ch0", CBTSPSolution.construct, 1)], [Method(f"li1", CBTSPSolution.local_improve, 1)], [Method(f"sh{i}", CBTSPSolution.shaking, i) for i in range(1, 2)], {'mh_titer': -100, 'mh_ttime': 20} )
+        alg = GVNS(solution, [Method(f"ch0", CBTSPSolution.construct, 3)], [Method(f"li1", CBTSPSolution.local_improve, 1)], [Method(f"sh{i}", CBTSPSolution.shaking, i) for i in range(1, 2)], {'mh_titer': -100, 'mh_ttime': 20} )
         alg.run()
         logger.info("")
         alg.method_statistics()
