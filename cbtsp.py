@@ -43,7 +43,10 @@ class CBTSPInstance:
         ws = sorted([ e[2] for e in edges ])
         minw = sum(ws[0:n])
         maxw = sum(ws[-n:])
-        M = maxw - min(minw,0)
+        #M = maxw - min(minw,0)
+        M = max(abs(minw),abs(maxw)) - sum(ws[0:n-1]) + 1
+
+        print(M)
             
         # adjacency matrix
         weights = np.full((n,n),M)

@@ -16,10 +16,19 @@
 		\item ...
 		\item Given is a (possibly not complete) graph $G=(V,E)$ and edge weigths $d_{i,j}$ for $(i,j) \in E$. To make the graph complete, an additional set of edges $E'$ is defined, consisting of all edges that are not alread in $E$, and we set $d_{i,j} = M$ for $(i,j) \in E'$. We want to calculate a value for $M$ so that any solution that requires traversing an edge from $E'$ is worse than all solutions that do not.
 		
-		A solution must visit $|V| + 1$ vertices (every node once, the starting node twice), so it always consists of $|V|$ distinct edges. A definite upper bound on the objective value of a valid solution can therefore be obtained via $E_{|V|}^+$ and $E_{|V|}^-$, which are the $|V|$ edges with the largest positive and smallest negative weights, respectively.
+		A solution must visit $|V| + 1$ vertices (every node once, the starting node twice), so it always consists of $|V|$ distinct edges. A definite upper bound on the objective value of a valid solution can therefore be obtained via $E_{|V|}^+$ and $E_{|V|}^-$, which are the $|V|$ edges with the largest and smallest weights, respectively.
 		\[ U(G) = \max\left( \left| \sum_{(i,j) \in E_{|V|}^+}{d_{i,j}} \right|, \left| \sum_{(i,j) \in E_{|V|}^-}{d_{i,j}} \right| \right) \]
+		Note that if there are less than $|V|$ edges with a particular sign, edges with the opposing sign are also included in $E_{|V|}^+$ and $E_{|V|}^-$, since they will only bring the sum closer to 0 and therefore make the upper bound tighter.
 		
-		Meanwhile, the lower bound on the objective value of a solution containing an edge with weight $M > 0$ can be found by assuming all other edges have the smallest negative weights possible.
+		To prove this is an upper bound, we examine 3 cases:
+		\begin{itemize}
+			\item $\sum_{(i,j) \in E_{|V|}^+}{d_{i,j}} \ge 0$ and $\sum_{(i,j) \in E_{|V|}^-}{d_{i,j}} < 0$: Increasing the sum of $E_{|V|}^+$ further would require replacing an edge $(i_0, j_0)$ with a different, unused edge $(i_1,j_1)$ so that either $d_{i_1,j_1} > d_{i_0,j_0}$ or $d_{i_1,j_1} < -2\sum_{(i,j) \in E_{|V|}^+}{d_{i,j}} + d_{i_0,j_0}$ (so the sum flips to negative and increases in absolute value). The first option is impossible since all edges with the greatest weights have been used, and in the second, $(i_1,j_1)$ or an edge with even smaller weight must be included in $E_{|V|}^-$ along with all other smallest possible edges, meaning both the original $E_{|V|}^+$ sum and our new sum cannot be larger than the $E_{|V|}^-$ sum, which is the actual upper bound due to the $\max$ function. The same idea applies to decreasing the sum of $E_{|V|}^-$.
+			\item $\sum_{(i,j) \in E_{|V|}^+}{d_{i,j}} \ge 0$ and $\sum_{(i,j) \in E_{|V|}^-}{d_{i,j}} \ge 0$: In this case the sum of $E_{|V|}^+$ is automatically chosen as the upper bound and there is actually no way to sum $|V|$ edges up to a negative value, so we could only increase the objective value by replacing an edge from $E_{|V|}^+$ with an edge that has a greater weight. As stated before, this is clearly not possible.
+			\item $\sum_{(i,j) \in E_{|V|}^+}{d_{i,j}} < 0$ and $\sum_{(i,j) \in E_{|V|}^-}{d_{i,j}} < 0$: See previous case.
+		\end{itemize}
+		No other cases are possible because $\sum_{(i,j) \in E_{|V|}^+}{d_{i,j}} \ge \sum_{(i,j) \in E_{|V|}^-}{d_{i,j}}$.
+		
+		Meanwhile, the lower bound on the objective value of a solution containing an edge with weight $M > 0$ can be found by assuming all other edges have the smallest weights possible.
 		\[ L(G,M) = M + \sum_{(i,j) \in E_{|V|-1}^-}{d_{i,j}} \]
 		
 		Now we just need to find $M$ so that the disequality $L(G,M) > U(G)$ is satisfied:
