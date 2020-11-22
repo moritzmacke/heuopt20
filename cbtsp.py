@@ -445,6 +445,20 @@ class CBTSPSolution(PermutationSolution):
             without updating the obj_val or invalidating, since obj_val is updated incrementally by the SA scheduler."""
         self.apply_two_opt_move(*move)
 
+    def apply_three_opt_move(self, p1: int, p2: int, p3: int):
+        """The subsequence from p2 to p3 is moved before p1 in self.x.
+
+        Works the same way as apply_two_opt_move from the base class, so no value update or invalidation is done.
+        """
+        self.x = self.x[:p1] + self.x[p2:(p3+1)] + self.x[p1:p2] + self.x[(p3+1):]
+
+    def apply_short_block_move(self, p1: int, p2: int):
+        """The subsequence of length 3 starting at p2 is moved before p1 in self.x.
+
+        Works the same way as apply_two_opt_move from the base class, so no value update or invalidation is done.
+        """
+        self.x = self.x[:p1] + self.x[p2:(p2 + 3)] + self.x[p1:p2] + self.x[(p2 + 3):]
+
     def crossover(self, other: 'CBTSPSolution') -> 'CBTSPSolution':
         """Perform edge recombination."""
         return self.edge_recombination(other)
