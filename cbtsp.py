@@ -15,6 +15,7 @@ from pymhlib.solution import Solution
 
 #from pymhlib.settings import get_settings_parser
 from hamcycle import HamCycle
+from greedyedge import GreedyEdgeConst
 
 class CBTSPInstance:
     """
@@ -122,7 +123,10 @@ class CBTSPSolution(PermutationSolution):
         elif par == 1:
             self.nn_const_heuristic_single(0)
         elif par == 2:
-            self.edge_const_heuristic(False)
+            h = GreedyEdgeConst(self.inst.n, self.inst.edges)
+            self.x = h.construct(0.0) #0.01
+            self.invalidate()
+            
         elif par == 3:
             self.hamilton_const_heuristic()
         else:
@@ -227,111 +231,6 @@ class CBTSPSolution(PermutationSolution):
         
         self.x[:] = x
         self.invalidate()
-
-    def edge_const_heuristic(self, random_edge=False):
-        """Greedily select edges without forming circles or trees (keep max degree <= 2)
-        Seems like it produces fewer invalid edges in solution than nn for large instances?
-        Could be used for randomized construction
-        Could be sped up
-        """
-        n = self.inst.n
-        edges = sorted(self.inst.edges, key=lambda e: e[2])
-        setof = [i for i in range(n)]
-        seledges = [[] for i in range(n)]
-#        print(edges, setof, seledges)
-        
-        k = 0
-        cur_obj = 0
-        
-        while edges:
-            cand_edges = []
-            for e in edges:
-                p, q = e[0], e[1]
-                if len(seledges[p]) > 1 or len(seledges[q]) > 1:
-                    continue
-                if setof[p] == setof[q] and k < n:
-                    continue
-                cand_edges.append(e)
-#            print("filtered edges", cand_edges)
-            if not cand_edges:
-                break
-            best_e = random.choice(cand_edges)
-            best_obj = cur_obj + best_e[2]
-            if not random_edge:
-                for e in cand_edges:
-                    new_obj = cur_obj + e[2]
-                    if abs(new_obj) < abs(best_obj):
-                        best_e = e
-                        best_obj = new_obj
-#            print("best edge", best_e)
-            p,q = best_e[0], best_e[1]
-            seledges[p].append(q)
-            seledges[q].append(p)
-            sq,sp = setof[q], setof[p]
-            spq = min(sq,sp)
-            for i in range(n):
-                if setof[i] == sq or setof[i] == sp:
-                    setof[i] = spq
-#            print(["{}:{}".format(i,e) for (i,e) in enumerate(seledges)])
-#            print(setof)
-            edges = cand_edges
-            cur_obj = best_obj
-            k = k + 1
-                
-        
-#        print(k)
-        # construct tour from fragments, will have to add invalid edges
-        
-        # this whole procedure is pretty ugly and probably not correct...
-        x = []
-        visited = [False for i in range(n)]
-        for i in range(n):
-            if visited[i]:
-                continue
-            ps = [i]
-            visited[i] = True
-            if len(seledges[i]) >= 1:
-                p = i
-                q = seledges[p][0]
-                ps.append(q)
-                p = q
-                while len(seledges[p]) > 1 and not visited[p]:
-                    visited[p] = True
-                    q1,q2 = seledges[p][0], seledges[p][1]
-                    q = q1 if not visited[q1] else q2
-                    if visited[q]:
-                        break
-                    ps.append(q)
-                    p = q
-                visited[p] = True
-                q = seledges[p][0] #must be len(seledges[p] == 1 here, unless we have a full cycle?
-                if not visited[q]:
-                    ps.append(q)
-                    visited[q] = True
-                
-                # search in other direction
-                p = i  
-                while len(seledges[p]) > 1:
-                    q1,q2 = seledges[p][0], seledges[p][1]
-                    q = q1 if not visited[q1] else q2
-                    if visited[q]:
-                        break
-                    ps = [q] + ps
-                    visited[q] = True
-                    p = q
-                q = seledges[p][0]
-                if not visited[q]:
-                    ps = [q] + ps
-                    visited[q] = True
-                    
-#            print(ps)
-            x += ps
-
-        
-#        print(x, [i for i in x if x.count(i) > 1])
-        self.x[:] = x
-        self.invalidate()
-
  
 
     def is_better(self, other: "Solution") -> bool:

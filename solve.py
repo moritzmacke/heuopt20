@@ -41,7 +41,7 @@ if __name__ == '__main__':
     solution = CBTSPSolution(instance)
     
     if settings.alg == 'just_const':
-        solution.construct(3, None)
+        solution.construct(2, None)
         solution.check()
     elif settings.alg == 'just_rconst':
         raise NotImplementedError

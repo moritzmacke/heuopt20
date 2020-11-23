@@ -97,7 +97,7 @@ class HamCycle:
             if path.length == self.n and self.try_close_cycle(path):
                 break
             ctr += 1
-#            if ctr > 100: break;
+            if ctr > 100: break;
         path = max_path
         
         x = path.tolist()
@@ -148,9 +148,9 @@ class HamCycle:
                 p.visited = True #for sake of neighbor test
                 ok = True # what if last?
                 for q in p.ns_open: #any neighbor unreachable? does this actually test it?
-                    s = sum(1 for r in q.ns_open if not r.visited)
+                    noblock = all(r.visited for r in q.ns_open)
 #                    print(q, "->", s)
-                    if s == 0 and path.length < self.n-2:  #it's okay if we are at last two points?
+                    if noblock and path.length < self.n-2:  #it's okay if we are at last two points?
                         ok = False
                         break
                 p.visited = False #
@@ -165,7 +165,6 @@ class HamCycle:
 #            print("choose", last)
             
     def rotate_path(self, path, tried_moves):
-        
         e = path.lst
         best_p = None
         best_le = -1
@@ -225,19 +224,3 @@ class HamCycle:
             e = path.lst
         return cycle
                 
-    
-if __name__ == '__main__':
-    
-    
-    ps = [PointInfo(i) for i in range(10)]
-    
-    path = Path()
-    for p in ps:
-        path.append(p)
-        
-    path.rev_after(ps[4])
-        
-    path.pr()
-    path.rpr()
-    
-    
