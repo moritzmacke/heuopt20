@@ -3,6 +3,7 @@ import random
 import numpy as np
 import math
 from typing import Tuple, Any
+from enum import IntEnum
 
 import logging
 from pymhlib.log import init_logger
@@ -16,6 +17,21 @@ from pymhlib.solution import Solution
 #from pymhlib.settings import get_settings_parser
 from hamcycle import HamCycle
 from greedyedge import GreedyEdgeConst
+
+class Construct(IntEnum):
+    NONE = 0
+    GREEDY_EDGE = 1
+    GREEDY_EDGE_RANDOM = 2
+    HAMILTON_PATH = 3
+    
+class Neighbor(IntEnum):
+    KOPT2 = 1
+    KOPT3 = 2
+
+class Step(IntEnum):
+    RANDOM = 0
+    BEST = 1
+    FIRST = 2
 
 class CBTSPInstance:
     """
@@ -115,22 +131,19 @@ class CBTSPSolution(PermutationSolution):
     def construct(self, par, _result):
         """Scheduler method that constructs a new solution.
 
-        #implment construction heuristic
-
         """
-        if par == 0:
-            self.initialize(par) # random order of nodes
-        elif par == 1:
-            self.nn_const_heuristic_single(0)
-        elif par == 2:
+        if par == Construct.GREEDY_EDGE:
             h = GreedyEdgeConst(self.inst.n, self.inst.edges)
-            self.x = h.construct(0.0) #0.01
+            self.x[:] = h.construct(0) 
             self.invalidate()
-
-        elif par == 3:
+        elif par == Construct.GREEDY_EDGE_RANDOM:
+            h = GreedyEdgeConst(self.inst.n, self.inst.edges)
+            self.x[:] = h.construct(0.1)
+            self.invalidate()
+        elif par == Construct.HAMILTON_PATH:
             self.hamilton_const_heuristic()
         else:
-            self.insert_const_heuristic(True)
+            self.initialize(par) # random order of nodes
 
     def hamilton_const_heuristic(self):
         """Try to find a hamiltonian cycle with valid edges, ignores edge weights

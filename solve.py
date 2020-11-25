@@ -7,7 +7,7 @@ from pymhlib.scheduler import Method
 from pymhlib.settings import parse_settings, settings, get_settings_parser, get_settings_as_str
 from pymhlib.solution import Solution
 
-from cbtsp import CBTSPInstance, CBTSPSolution
+from cbtsp import *
 
 inst_dir = "instances/"
 
@@ -41,16 +41,17 @@ if __name__ == '__main__':
     solution = CBTSPSolution(instance)
     
     if settings.alg == 'just_const':
-        solution.construct(2, None)
+        solution.construct(Construct.GREEDY_EDGE, None)
         solution.check()
     elif settings.alg == 'just_rconst':
-        raise NotImplementedError
+        solution.construct(Construct.GREEDY_EDGE_RANDOM, None)
+        solution.check()
     elif settings.alg == 'grasp':
         raise NotImplementedError
     elif settings.alg == 'lsearch':
         raise NotImplementedError
     elif settings.alg == 'gvns':
-        alg = GVNS(solution, [Method(f"ch0", CBTSPSolution.construct, 3)], [Method(f"li1", CBTSPSolution.local_improve, 1)], [Method(f"sh{i}", CBTSPSolution.shaking, i) for i in range(1, 2)], {'mh_titer': -100, 'mh_ttime': 20} )
+        alg = GVNS(solution, [Method(f"ch0", CBTSPSolution.construct, Construct.GREEDY_EDGE)], [Method(f"li1", CBTSPSolution.local_improve, 1)], [Method(f"sh{i}", CBTSPSolution.shaking, i) for i in range(1, 2)], {'mh_titer': -100, 'mh_ttime': 20} )
         alg.run()
         logger.info("")
         alg.method_statistics()
