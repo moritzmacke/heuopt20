@@ -9,6 +9,7 @@ from pymhlib.solution import Solution
 
 from cbtsp import *
 from grasp import GRASP
+from pymhlib.sa import SA
 
 inst_dir = "instances/"
 
@@ -19,7 +20,7 @@ def add_general_arguments_and_parse_settings(default_inst_file: str = '0010.txt'
     :param default_inst_file: default instance file to be loaded and solved
     """
     parser = get_settings_parser()
-    parser.add_argument("--alg", type=str, default='gvns', help='optimization algorithm to be used '
+    parser.add_argument("--alg", type=str, default='sa', help='optimization algorithm to be used '
                                                                 '(just_const, just_rconst, grasp, lsearch, gvns)')
     parser.add_argument("--inst_file", type=str, default=default_inst_file,
                         help='problem instance file')
@@ -67,6 +68,11 @@ if __name__ == '__main__':
         logger.info("")
         alg.method_statistics()
         alg.main_results()
-
+    elif settings.alg == "sa":
+        alg = SA(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM)], CBTSPSolution.random_move_delta_eval, CBTSPSolution.apply_neighborhood_move, None)
+        alg.run()
+        logger.info("")
+        alg.method_statistics()
+        alg.main_results()
 
 #    print(solution, solution.obj())
