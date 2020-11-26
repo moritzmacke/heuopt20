@@ -35,7 +35,7 @@ class GRASP(Scheduler):
         self.meth_ch = meth_ch
         self.meth_li = meth_li
 
-    #just search till local optimum? seems that's reached in very few iterations though
+    #just search till local optimum? 
     def localsearch(self, sol: Solution) -> Result:
         """local search until no better solution found or termination condition
 
@@ -43,6 +43,7 @@ class GRASP(Scheduler):
         """
         sol2 = sol.copy()
         while True:
+#            print("improve", sol2, sol2.obj())
             res = self.perform_method(self.meth_li, sol2)
             if sol2.is_better(sol):
 #                print("improved", sol2.obj())
@@ -50,6 +51,7 @@ class GRASP(Scheduler):
                 if res.terminate:
                     return res
             else:
+#                print("couldn't be improved", sol2, sol2.obj())
                 return res
 
 

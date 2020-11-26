@@ -62,15 +62,13 @@ class CBTSPInstance:
         maxw = sum(ws[-n:])
         #M = maxw - min(minw,0)
         M = max(abs(minw),abs(maxw)) - sum(ws[0:n-1]) + 1
-
-        print(M)
-            
+           
         # adjacency matrix
         weights = np.full((n,n),M)
         for (n1, n2, w) in edges:
 #            print(n1,n2,w)
             weights[n1][n2] = weights[n2][n1] = w #
-            
+                        
         self.weights = weights
         self.n = n
         self.valid_threshold = maxw
@@ -267,12 +265,6 @@ class CBTSPSolution(PermutationSolution):
 
 
 
-
-
-
-
-
-#
     def shaking(self, par, result):
         """Scheduler method that performs shaking by 'par'-times swapping a pair of randomly chosen cities."""
         for _ in range(par):
@@ -303,6 +295,8 @@ class CBTSPSolution(PermutationSolution):
 
         :return: True if an improved solution has been found
         """
+        
+#        tried = []
                
         n = self.inst.n
         best_delta = 0
@@ -310,10 +304,14 @@ class CBTSPSolution(PermutationSolution):
         best_p2 = None
         order = np.arange(n)
         np.random.shuffle(order)
-        for idx, p1 in enumerate(order[:n - 1]):
-            for p2 in order[idx + 1:]:
+        for i in range(n - 1):
+            for j in range(i+1,n):
+                p1, p2 = order[i], order[j]
                 if p1 > p2:
                     p1, p2 = p2, p1
+                    
+#                tried.append((p1,p2))
+                
                 # consider the move that self.x from position p1 to position p2
                 delta = self.two_opt_move_delta_eval(p1, p2)
                 obj_new = self.obj_val + delta
@@ -326,11 +324,14 @@ class CBTSPSolution(PermutationSolution):
                     best_delta = delta
                     best_p1 = p1
                     best_p2 = p2
-        if best_p1:
+        if best_p1 != None:
             self.apply_two_opt_move(best_p1, best_p2)
             self.obj_val += best_delta
+#            print(sorted(tried), len(tried))
             return True
+#        print(sorted(tried), len(tried))
         return False
+        
 
     def two_opt_move_delta_eval(self, p1: int, p2: int) -> int:
         """ This method performs the delta evaluation for inverting self.x from position p1 to position p2.
