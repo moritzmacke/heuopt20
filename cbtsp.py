@@ -283,7 +283,13 @@ class CBTSPSolution(PermutationSolution):
         result.changed = True
 
     def local_improve(self, _par, _result):
-        self.own_two_opt_neighborhood_search(True)
+        
+        neighbor, step = _par
+        
+        if neighbor == Neighbor.KOPT2:
+            self.own_two_opt_neighborhood_search(step == Step.BEST)
+        else:
+            raise NotImplementedError
         
     #
     def own_two_opt_neighborhood_search(self, best_improvement) -> bool:

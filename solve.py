@@ -8,6 +8,7 @@ from pymhlib.settings import parse_settings, settings, get_settings_parser, get_
 from pymhlib.solution import Solution
 
 from cbtsp import *
+from grasp import GRASP
 
 inst_dir = "instances/"
 
@@ -36,26 +37,36 @@ if __name__ == '__main__':
     logger = logging.getLogger("pymhlib")
     logger.info(get_settings_as_str())
     
+    ownsettings = {'mh_titer': -1, 'mh_workers': 1, 'mh_ttime': 20 if settings.mh_ttime < 0 else settings.mh_ttime}
+    logger.info(ownsettings)
+    
+    
     instance = CBTSPInstance(inst_dir + settings.inst_file)
     logger.info("instance read:\n" + str(instance))
     solution = CBTSPSolution(instance)
     
+    
+    
     if settings.alg == 'just_const':
-        solution.construct(Construct.GREEDY_EDGE, None)
+        solution.construct(Construct.HAMILTON_PATH, None)
         solution.check()
     elif settings.alg == 'just_rconst':
         solution.construct(Construct.GREEDY_EDGE_RANDOM, None)
         solution.check()
     elif settings.alg == 'grasp':
-        raise NotImplementedError
+        alg = GRASP(solution, Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM), Method("search", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST)), ownsettings)
+        alg.run()
+        logger.info("")
+        alg.method_statistics()
+        alg.main_results()
     elif settings.alg == 'lsearch':
         raise NotImplementedError
     elif settings.alg == 'gvns':
-        alg = GVNS(solution, [Method(f"ch0", CBTSPSolution.construct, Construct.GREEDY_EDGE)], [Method(f"li1", CBTSPSolution.local_improve, 1)], [Method(f"sh{i}", CBTSPSolution.shaking, i) for i in range(1, 2)], {'mh_titer': -100, 'mh_ttime': 20} )
+        alg = GVNS(solution, [Method(f"ch0", CBTSPSolution.construct, Construct.GREEDY_EDGE)], [Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST))], [Method(f"sh{i}", CBTSPSolution.shaking, i) for i in range(1, 2)], ownsettings)
         alg.run()
         logger.info("")
         alg.method_statistics()
         alg.main_results()
 
 
-    print(solution, solution.obj())
+#    print(solution, solution.obj())
