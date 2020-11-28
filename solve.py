@@ -60,6 +60,11 @@ if __name__ == '__main__':
         alg.method_statistics()
         alg.main_results()
     elif settings.alg == 'lsearch':
+        
+#        print(solution, solution.obj())
+#        solution.local_improve((Neighbor.KOPT2, Step.BEST),None)
+#        print(solution, solution.obj())
+        
         raise NotImplementedError
     elif settings.alg == 'gvns':
         alg = GVNS(solution, [Method(f"ch0", CBTSPSolution.construct, Construct.GREEDY_EDGE)], [Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST))], [Method(f"sh{i}", CBTSPSolution.shaking, i) for i in range(1, 2)], ownsettings)
