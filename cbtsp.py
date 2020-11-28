@@ -166,8 +166,8 @@ class CBTSPSolution(PermutationSolution):
     def hamilton_const_heuristic(self):
         """Try to find a hamiltonian cycle with valid edges, ignores edge weights
         """
-        h = HamCycle(self.inst.n, self.inst.edges)
-        self.x[:] = h.construct()
+        h = HamCycle(self.inst)
+        self.x[:] = h.construct(True)
         self.invalidate()
 
 
