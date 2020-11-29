@@ -88,6 +88,7 @@ class CBTSPSolution(PermutationSolution):
     Attributes
         - inst: associated TSPInstance
         - x: order in which cities are visited, i.e., a permutation of 0,...,n-1
+        - obj_val_negative: True if the actual sum of edge weights (prior to abs) in the solution is <0, False otherwise
     """
 
     to_maximize = False
@@ -95,6 +96,7 @@ class CBTSPSolution(PermutationSolution):
     def __init__(self, inst: CBTSPInstance):
         super().__init__(inst.n, inst=inst)
         self.obj_val_valid = False
+        self.obj_val_negative = False
 
     def copy(self):
         sol = CBTSPSolution(self.inst)
@@ -106,7 +108,10 @@ class CBTSPSolution(PermutationSolution):
         for i in range(self.inst.n - 1):
             w += self.inst.weights[self.x[i]][self.x[i + 1]]
         w += self.inst.weights[self.x[-1]][self.x[0]]
-        return w #abs(w)
+
+        self.obj_val_negative = (w < 0)
+
+        return abs(w)
 
     def check(self):
         """Check if valid solution.
@@ -245,33 +250,6 @@ class CBTSPSolution(PermutationSolution):
         self.x[:] = x
         self.invalidate()
 
-
-    def is_better(self, other: "Solution") -> bool:
-        """Return True if the current solution is better in terms of the objective function than the other."""
-        return abs(self.obj()) < abs(other.obj()) 
-
-    def is_worse(self, other: "Solution") -> bool:
-        """Return True if the current solution is worse in terms of the objective function than the other."""
-        return abs(self.obj()) > abs(other.obj()) 
-
-    @classmethod
-    def is_better_obj(cls, obj1: TObj, obj2: TObj) -> bool:
-        """Return True if the obj1 is a better objective value than obj2."""
-        return abs(obj1) < abs(obj2)
-
-    @classmethod
-    def is_worse_obj(cls, obj1: TObj, obj2: TObj) -> bool:
-        """Return True if obj1 is a worse objective value than obj2."""
-        return abs(obj1) > abs(obj2)
-
-
-
-
-
-
-
-
-
 #
     def shaking(self, par, result):
         """Scheduler method that performs shaking by 'par'-times swapping a pair of randomly chosen cities."""
@@ -332,16 +310,14 @@ class CBTSPSolution(PermutationSolution):
             return True
         return False
 
-    def two_opt_move_delta_eval(self, p1: int, p2: int) -> int:
-        """ This method performs the delta evaluation for inverting self.x from position p1 to position p2.
-
-        The function returns the difference in the objective function if the move would be performed,
-        the solution, however, is not changed.
+    def two_opt_move_signed_delta(self, p1: int, p2: int) -> int:
+        """ Helper function to compute the real difference between the old and new edge weight total for a 2-opt move.
+        This is distinct from the actual delta, which is the difference between the absolute values of old and new.
         """
         assert (p1 < p2)
         n = len(self.x)
         if p1 == 0 and p2 == n - 1:
-           # reversing the whole solution has no effect
+            # reversing the whole solution has no effect
             return 0
         prev = (p1 - 1) % n
         nxt = (p2 + 1) % n
@@ -354,11 +330,20 @@ class CBTSPSolution(PermutationSolution):
 
         return delta
 
-    def three_opt_move_delta_eval(self, p1: int, p2: int, p3: int) -> int:
-        """ Performs delta evaluation for moving the subsequence from p2 to p3 before p1 in self.x.
+    def two_opt_move_delta_eval(self, p1: int, p2: int) -> int:
+        """ This method performs the delta evaluation for inverting self.x from position p1 to position p2.
 
         The function returns the difference in the objective function if the move would be performed,
         the solution, however, is not changed.
+        """
+        delta_real = self.two_opt_move_signed_delta(p1, p2)
+
+        delta_abs = abs(self.obj_val * (-1 if self.obj_val_negative else 1) + delta_real) - self.obj_val
+        return delta_abs
+
+    def three_opt_move_signed_delta(self, p1: int, p2: int) -> int:
+        """ Helper function to compute the real difference between the old and new edge weight total for a 3-opt move.
+        This is distinct from the actual delta, which is the difference between the absolute values of old and new.
         """
         assert (p1 < p2)
         assert (p2 < p3)
@@ -375,15 +360,25 @@ class CBTSPSolution(PermutationSolution):
         # Added edges: predecessor of p1 to p2, p3 to p1, predecessor of p2 to successor of p3
         # Lost edges: predecessor of p1 to p1, predecessor of p2 to p2, p3 to successor of p3
         delta = d[x_p1_pred][x_p2] + d[x_p3][x_p1] + d[x_p2_pred][x_p3_succ] \
-            - d[x_p1_pred][x_p1] - d[x_p2_pred][x_p2] - d[x_p3][x_p3_succ]
+                     - d[x_p1_pred][x_p1] - d[x_p2_pred][x_p2] - d[x_p3][x_p3_succ]
 
         return delta
 
-    def short_block_delta_eval(self, p1: int, p2: int) -> int:
-        """ Performs delta evaluation for moving the subsequence of length 3 starting at p2 before p1 in self.x.
+    def three_opt_move_delta_eval(self, p1: int, p2: int, p3: int) -> int:
+        """ Performs delta evaluation for moving the subsequence from p2 to p3 before p1 in self.x.
 
         The function returns the difference in the objective function if the move would be performed,
         the solution, however, is not changed.
+        """
+
+        delta_real = self.three_opt_move_signed_delta(p1,p2,p3)
+
+        delta_abs = abs(self.obj_val * (-1 if self.obj_val_negative else 1) + delta_real) - self.obj_val
+        return delta_abs
+
+    def short_block_signed_delta(self, p1: int, p2: int) -> int:
+        """ Helper function to compute the real difference between the old and new edge weight total for a short block move.
+        This is distinct from the actual delta, which is the difference between the absolute values of old and new.
         """
         assert (p1 < p2)
         n = len(self.x)
@@ -399,9 +394,20 @@ class CBTSPSolution(PermutationSolution):
         # Added edges: predecessor of p1 to p2, subseq end to p1, predecessor of p2 to successor of subseq end
         # Lost edges: predecessor of p1 to p1, predecessor of p2 to p2, subseq end to successor of subseq end
         delta = d[x_p1_pred][x_p2] + d[x_subseq_end][x_p1] + d[x_p2_pred][x_subseq_end_succ] \
-            - d[x_p1_pred][x_p1] - d[x_p2_pred][x_p2] - d[x_subseq_end][x_subseq_end_succ]
+                     - d[x_p1_pred][x_p1] - d[x_p2_pred][x_p2] - d[x_subseq_end][x_subseq_end_succ]
 
         return delta
+
+    def short_block_delta_eval(self, p1: int, p2: int) -> int:
+        """ Performs delta evaluation for moving the subsequence of length 3 starting at p2 before p1 in self.x.
+
+        The function returns the difference in the objective function if the move would be performed,
+        the solution, however, is not changed.
+        """
+        delta_real = self.short_block_signed_delta(p1,p2)
+
+        delta_abs = abs(self.obj_val * (-1 if self.obj_val_negative else 1) + delta_real) - self.obj_val
+        return delta_abs
 
     def random_move_delta_eval(self) -> Tuple[Any, TObj]:
         """Choose a random move and perform delta evaluation for it, return (move, delta_obj)."""
@@ -410,6 +416,10 @@ class CBTSPSolution(PermutationSolution):
     def apply_neighborhood_move(self, move):
         """This method applies a given neighborhood move accepted by SA,
             without updating the obj_val or invalidating, since obj_val is updated incrementally by the SA scheduler."""
+        # Since this is the last opportunity to do so before applying delta, update obj_val sign flag here
+        signed_obj_new = self.obj_val * (-1 if self.obj_val_negative else 1) + self.two_opt_move_signed_delta(*move)
+        self.obj_val_negative = (signed_obj_new < 0)
+
         self.apply_two_opt_move(*move)
 
     def apply_three_opt_move(self, p1: int, p2: int, p3: int):
