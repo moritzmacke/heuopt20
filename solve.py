@@ -9,7 +9,7 @@ from pymhlib.solution import Solution
 
 from cbtsp import *
 from grasp import GRASP
-from pymhlib.sa import SA
+from sa_cbtsp import SA_CBTSP
 
 inst_dir = "instances/"
 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
         alg.method_statistics()
         alg.main_results()
     elif settings.alg == "sa":
-        alg = SA(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM)], CBTSPSolution.random_move_delta_eval, CBTSPSolution.apply_neighborhood_move, None)
+        alg = SA_CBTSP(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM)], CBTSPSolution.random_move_delta_eval, CBTSPSolution.apply_neighborhood_move, None)
         alg.run()
         logger.info("")
         alg.method_statistics()
