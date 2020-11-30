@@ -29,6 +29,7 @@ class Neighbor(IntEnum):
     KOPT3 = 2
     XCHG = 3
     SBLOCK = 4
+    KOPT2HALF = 5
 
 class CBTSPInstance:
     """
@@ -197,6 +198,11 @@ class CBTSPSolution(PermutationSolution):
             app = PermutationSolution.apply_two_exchange_move
             delta = PermutationSolution.two_exchange_move_delta_eval
             self.neighborhood_search(gen, app, delta, step)
+        elif neighbor == Neighbor.KOPT2HALF:
+            gen = PermutationSolution.generate_two_half_opt_neighborhood
+            app = PermutationSolution.apply_two_half_opt_move
+            delta = PermutationSolution.two_half_opt_move_delta_eval
+            self.neighborhood_search(gen, app, delta, step)
         else:
             raise NotImplementedError
 
@@ -215,3 +221,11 @@ class CBTSPSolution(PermutationSolution):
     def crossover(self, other: 'CBTSPSolution') -> 'CBTSPSolution':
         """Perform edge recombination."""
         return self.edge_recombination(other)
+
+
+if __name__ == '__main__':
+    
+    inst = CBTSPInstance("./instances/0010.txt")
+    sol = CBTSPSolution(inst)
+    ms = [m for m in sol.generate_short_block_neighborhood()]
+    print(sorted(ms))
