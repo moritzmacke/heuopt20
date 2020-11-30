@@ -1,4 +1,5 @@
 import itertools
+import time
 
 class PointInfo:
     """
@@ -91,7 +92,11 @@ class HamCycle:
         w += d[x[-1]][x[0]]
         return w
           
-    def construct(self, find_best_solution = False):
+    def construct(self, find_best_solution = False, max_time = 10):
+        """
+        :param find_best_solution:
+        :param max_time: maximum time in second to try for solution
+        """
         pts = [PointInfo(i) for i in range(self.inst.n)]
         for (n1, n2, w) in self.inst.edges:
             pts[n1].ns_open.add(pts[n2])
@@ -104,6 +109,9 @@ class HamCycle:
                
         max_path = None
         max_path_len = 0
+        
+        t_start = time.process_time()
+        
         ctr = 0
         for e in es:
 #            print("start from", e.idx)
@@ -111,7 +119,7 @@ class HamCycle:
             if path.length > max_path_len:
                 max_path = path
                 max_path_len = path.length
-            print("loop: {}, p: {}, len: {}, max: {}".format(ctr, e.idx, path.length, max_path_len))
+            print("loop: {}, p: {}, len: {}, max: {}".format(ctr+1, e.idx, path.length, max_path_len))
             if path.length == self.inst.n and self.try_close_cycle(path):
                 if find_best_solution:
                     x = path.tolist()
@@ -124,7 +132,9 @@ class HamCycle:
                 else:
                     break
             ctr += 1
-            if ctr > 100: break; # searching all takes quite long...
+            elapsed = time.process_time() - t_start
+            if elapsed > max_time: break
+#            if ctr > max_iterations: break; # searching all takes quite long...
         if not best_sol:
             x = max_path.tolist()
             x += [i.idx for i in ps if i.idx not in x]
@@ -190,7 +200,6 @@ class HamCycle:
         best_le = -1
 #        print("end", e)
         for p in e.ns_path: #find neighbors in path
- #           print(p)
             new_end = p.nxt
             if new_end == e or (e.idx, new_end.idx) in tried_moves:
                 continue
@@ -216,7 +225,7 @@ class HamCycle:
                
         s, e = path.fst, path.lst
         cycle = False
-        while e != None:
+        while not tried[e.idx]:
             #with path len == n all neighbors will be in ns_path
             if s in e.ns_path: #is there edge to start?
 #                print("found cycle!")
