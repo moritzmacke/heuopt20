@@ -69,7 +69,12 @@ if __name__ == '__main__':
         alg.method_statistics()
         alg.main_results()
     elif settings.alg == "sa":
-        alg = SA_CBTSP(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM)], CBTSPSolution.random_move_delta_eval, CBTSPSolution.apply_neighborhood_move, None)
+        sa_settings = {
+            'mh_titer': -1,
+            'mh_tciter': 10000, # Shortcut: Abort after 10000 non-improving iterations - remove for real tests
+            'mh_ttime': 15*60 # Limited to 15 min CPU time
+        }
+        alg = SA_CBTSP(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM)], CBTSPSolution.random_move_delta_eval, CBTSPSolution.apply_neighborhood_move, None, sa_settings)
         alg.run()
         logger.info("")
         alg.method_statistics()

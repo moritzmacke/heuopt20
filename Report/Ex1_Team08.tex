@@ -36,5 +36,24 @@
 			M + \sum_{(i,j) \in E_{|V|-1}^-}{d_{i,j}} &> \max\left( \left| \sum_{(i,j) \in E_{|V|}^+}{d_{i,j}} \right|, \left| \sum_{(i,j) \in E_{|V|}^-}{d_{i,j}} \right| \right)\\
 			M &> \max\left( \left| \sum_{(i,j) \in E_{|V|}^+}{d_{i,j}} \right|, \left| \sum_{(i,j) \in E_{|V|}^-}{d_{i,j}} \right| \right) - \sum_{(i,j) \in E_{|V|-1}^-}{d_{i,j}}
 		\end{align*}
+		\item ...
+		\item ...
+		\item ...
+		\item ...
+		\item ...
+		\item ...
+		\item ...
+		\item We implemented \textbf{Simulated Annealing} as the metaheuristic. The pymhlib already contains a SA class, which can be instantiated with our own initial solution, construction heuristic, and neighborhood exploration functions. With those elements, the algorithm then does the following:
+		\begin{enumerate}[\arabic*.]
+			\item The construction heuristic(s) is applied, and the initial solution we passed in is replaced if this results in a better solution.
+			\item A neighborhood move is selected at random and delta evaluated.
+			\item The delta value is used to decide the acceptance of the move via the metropolis criterion: Improvements are always accepted, otherwise the probability is $e^{-\frac{|\delta|}{t}}$, where $\delta$ is the delta value and $t$ the current temperature.
+			\item If the move was accepted, it is applied to the solution and the objective value is updated according to the delta evaluation.
+			\item Steps 2-4 repeat for a fixed number of iterations.
+			\item The temperature is reduced via geometric cooling.
+			\item Step 2-6 repeat until the algorithm hits an iteration or time limit.
+		\end{enumerate}
+	
+		However, the built-in SA class initially produced only very bad results, which was due to the fact that the check whether a solution was an improvement was done by comparing the delta value to 0 as an objective function value. For our solution representation, these comparison functions compare the absolute value of the actually stored objective value, so a comparison to 0 will obviously always return false, and improvements will not be accepted. This was fixed by extending the SA class and overriding the metropolis criterion with a variation that checks for improvements with a dedicated function \verb|is_delta_improvement|.
 	\end{enumerate}
 \end{document}
