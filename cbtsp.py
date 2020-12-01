@@ -173,6 +173,9 @@ class CBTSPSolution(PermutationSolution):
         self.x[:] = h.construct(True)
         self.invalidate()
 
+    def dummy_shake(self, par, result):
+        pass
+
     def shaking(self, par, result):
         """Scheduler method that performs shaking by 'par'-times swapping a pair of randomly chosen cities."""
         for _ in range(par):

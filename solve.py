@@ -80,12 +80,16 @@ if __name__ == '__main__':
         alg.method_statistics()
         alg.main_results()
     elif settings.alg == 'lsearch':
+        ls_settings = {'mh_tciter': 1} #without shake function we won't get out of local optimum so can stop there
+        ls_settings.update(ownsettings)
         
-#        print(solution, solution.obj())
-#        solution.local_improve((Neighbor.KOPT2, Step.BEST),None)
-#        print(solution, solution.obj())
-        
-        raise NotImplementedError
+        alg = GVNS(solution, [Method("ch_ham_path", CBTSPSolution.construct, Construct.HAMILTON_PATH)],
+                   [Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2HALF, Step.BEST))],
+                   [Method("dummy", CBTSPSolution.dummy_shake, 0)], ls_settings)
+        alg.run()
+        logger.info("")
+        alg.method_statistics()
+        alg.main_results()
     elif settings.alg == 'gvns':
         alg = GVNS(solution, [Method(f"ch0", CBTSPSolution.construct, Construct.HAMILTON_PATH)], [Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST))], [Method(f"sh{i}", CBTSPSolution.shaking, i) for i in range(1, 2)], ownsettings)
         alg.run()
