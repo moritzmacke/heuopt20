@@ -19,7 +19,7 @@ class PointInfo:
 class PathFragment:
     
     def __init__(self, index: int):
-        self.fid = index
+        self.sid = index
         self.seq = [index]
         
     def fst(self):
@@ -34,7 +34,7 @@ class PathFragment:
             p, q = q, p
         
 #        print("connect", self, other, e)
-        m = PathFragment(min(self.fid, other.fid))
+        m = PathFragment(min(self.sid, other.sid))
 
         if p == self.fst():
             if q == other.fst():
@@ -81,14 +81,22 @@ class Edge:
     def __eq__(self, other):
         return self.p.idx == other.p.idx and self.q.idx == other.q.idx
 
-def set_set(sets, sidx, to):
-    
-    if sets[sidx].fid == sidx:
-        found
+def set_super(sets, idx, to):
+    s = sets[idx]
+    if s.sid == idx:
+        sets[idx] = to
     else:
-        sets[sidx].fid = set_set()
+        ss = set_super(sets, s.sid, to)
+        s.sid = to.sid
 
-
+def get_set(sets, idx):
+    s = sets[idx]
+    if s.sid == idx:
+        return s
+    else:
+        ss = get_set(sets, s.sid)
+        s.sid = ss.sid
+        return ss
 
 class GreedyEdgeConst:
     """ Choose edges that have the least neighbors greedily
@@ -128,25 +136,25 @@ class GreedyEdgeConst:
             sel_len = int(len(edges)*alpha)
             rand_sel = random.randrange(max(1, sel_len))
             e = edges[rand_sel]
-#            print("choose", e, "set of p", setof[e.p.idx].fid, "set of q", setof[e.q.idx].fid)
+#            print("choose", e, "set of p", setof[e.p.idx].sid, "set of q", setof[e.q.idx].sid)
             
             #update chosen edges, sets
             p,q = e.p, e.q
             seledges[p.idx].append(q.idx)
             seledges[q.idx].append(p.idx)
-            sq,sp = setof[q.idx], setof[p.idx]
+            sq,sp = get_set(setof, q.idx), get_set(setof, p.idx)
             
-#            assert(sq.fid != sp.fid)
+#            assert(sq.sid != sp.sid)
             
             spq = sp.connectOverEdge(e, sq)
 #            print("merge", sp, sq, "to", spq)
-            for i in range(n): #speed this up?
-                if setof[i].fid == sq.fid or setof[i].fid == sp.fid:
-                    setof[i] = spq
-#            print(["{}:{}".format(i,e) for (i,e) in enumerate(seledges)])
-#            print(setof)
+            set_super(setof, sp.sid, spq)
+            set_super(setof, sq.sid, spq)
 
-#            print([s.fid for s in setof])
+#            print(["{}:{}".format(i,e) for (i,e) in enumerate(seledges)])
+
+
+#            print([s.sid for s in setof])
 
             #update edges
             #all edges that share a point with current edge plus edges neighboring these again
@@ -167,7 +175,7 @@ class GreedyEdgeConst:
             for e in adjacient_edges:
                 #filter out now illegal edges
                 #is k<n-1 correct? want to be able to close cycle on last iteration
-                if len(seledges[e.p.idx]) > 1 or len(seledges[e.q.idx]) > 1 or (setof[e.p.idx].fid == setof[e.q.idx].fid and k < n-1):
+                if len(seledges[e.p.idx]) > 1 or len(seledges[e.q.idx]) > 1 or (get_set(setof, e.p.idx).sid == get_set(setof, e.q.idx).sid and k < n-1):
 #                    print("remove", e)
                     e.p.adj_edges.remove(e)
                     e.q.adj_edges.remove(e)
@@ -193,7 +201,7 @@ class GreedyEdgeConst:
 #        print(k, "edges")
             
         x = []
-        for s in set(setof):
+        for s in set([get_set(setof, i) for i in range(n)]):
 #            print(s)
             x += s.seq
             
@@ -202,12 +210,42 @@ class GreedyEdgeConst:
 
         return x
     
+def merge_sets(sets, s1, s2):
+    s = PathFragment(min(s1.sid, s2.sid))
+    set_super(sets, s1.sid, s)
+    set_super(sets, s2.sid, s)
+    
+def print_sets(sets):
+    l = [get_set(sets, s.sid) for s in sets]
+    print(l)
+    
 if __name__ == '__main__':
     
-    ps = [PointInfo(i) for i in range(10)]
+    sets = [PathFragment(i) for i in range(10)]
+        
+    print(sets)
     
-    e1 = Edge(ps[1], ps[2],1)
-    e2 = Edge(ps[1], ps[2],2)
+    merge_sets(sets, sets[0],sets[1])
+    print(sets)
     
-    print(e1,e2, hash(e1), hash(e2), e1 == e2)
+    merge_sets(sets, sets[3],sets[4])
+    print(sets)
+    merge_sets(sets, sets[3],sets[5])
+    print(sets)
     
+    merge_sets(sets, sets[7],sets[9])
+    print(sets)
+    merge_sets(sets, sets[9],sets[8])
+    print(sets)
+    merge_sets(sets, sets[9],sets[8])
+    print(sets)
+    merge_sets(sets, sets[2],sets[3])
+    print(sets)
+    print_sets(sets)
+    
+    merge_sets(sets, sets[9],sets[5])
+    print_sets(sets)
+    merge_sets(sets, sets[1],sets[6])
+    print_sets(sets)
+    merge_sets(sets, sets[0],sets[8])
+    print_sets(sets)
