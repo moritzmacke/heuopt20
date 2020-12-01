@@ -51,9 +51,11 @@ if __name__ == '__main__':
     if settings.alg == 'just_const':
         solution.construct(Construct.HAMILTON_PATH, None)
         solution.check()
+        print("obj", solution.obj())
     elif settings.alg == 'just_rconst':
         solution.construct(Construct.GREEDY_EDGE_RANDOM, None)
         solution.check()
+        print("obj", solution.obj())
     elif settings.alg == 'grasp':
         alg = GRASP(solution, Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM), Method("search", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST)), ownsettings)
         alg.run()
@@ -61,9 +63,14 @@ if __name__ == '__main__':
         alg.method_statistics()
         alg.main_results()
     elif settings.alg == 'lsearch':
+        
+#        print(solution, solution.obj())
+#        solution.local_improve((Neighbor.KOPT2, Step.BEST),None)
+#        print(solution, solution.obj())
+        
         raise NotImplementedError
     elif settings.alg == 'gvns':
-        alg = GVNS(solution, [Method(f"ch0", CBTSPSolution.construct, Construct.GREEDY_EDGE)], [Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST))], [Method(f"sh{i}", CBTSPSolution.shaking, i) for i in range(1, 2)], ownsettings)
+        alg = GVNS(solution, [Method(f"ch0", CBTSPSolution.construct, Construct.HAMILTON_PATH)], [Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST))], [Method(f"sh{i}", CBTSPSolution.shaking, i) for i in range(1, 2)], ownsettings)
         alg.run()
         logger.info("")
         alg.method_statistics()
