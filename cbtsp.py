@@ -12,10 +12,10 @@ from pymhlib.gvns import GVNS
 from pymhlib.scheduler import Method
 from pymhlib.solution import Solution
 
+from permutation import PermutationSolution, Step
 # from pymhlib.settings import get_settings_parser
 from hamcycle import HamCycle
 from greedyedge import GreedyEdgeConst
-from permutation import PermutationSolution
 
 
 class Construct(IntEnum):
@@ -29,12 +29,6 @@ class Neighbor(IntEnum):
     KOPT3 = 2
     XCHG = 3
     SBLOCK = 4
-
-class Step(IntEnum):
-    RANDOM = 0
-    BEST = 1
-    FIRST = 2
-
 
 class CBTSPInstance:
     """
@@ -63,14 +57,13 @@ class CBTSPInstance:
         ws = sorted([e[2] for e in edges])
         minw = sum(ws[0:n])
         maxw = sum(ws[-n:])
-
         #M = maxw - min(minw,0)
         M = max(abs(minw),abs(maxw)) - sum(ws[0:n-1]) + 1
            
         # adjacency matrix
         weights = np.full((n, n), M)
         for (n1, n2, w) in edges:
-        #    print(n1,n2,w)
+#            print(n1,n2,w)
             weights[n1][n2] = weights[n2][n1] = w  #
 
 
@@ -190,7 +183,7 @@ class CBTSPSolution(PermutationSolution):
     """Methods for local search"""
     
     def local_improve(self, _par, _result):
-        self.own_two_opt_neighborhood_search(True)
+#        self.own_two_opt_neighborhood_search(True)
 
         neighbor, step = _par
 
