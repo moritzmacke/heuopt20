@@ -149,17 +149,17 @@ class CBTSPSolution(PermutationSolution):
 
     """Solution construction functions"""
 
-    def construct(self, par, _result):
+    def construct(self, par, _result=None, alpha=0.1):
         """Scheduler method that constructs a new solution.
-
         """
+        
         if par == Construct.GREEDY_EDGE:
             h = GreedyEdgeConst(self.inst.n, self.inst.edges)
             self.x[:] = h.construct(0)
             self.invalidate()
         elif par == Construct.GREEDY_EDGE_RANDOM:
             h = GreedyEdgeConst(self.inst.n, self.inst.edges)
-            self.x[:] = h.construct(0.1)
+            self.x[:] = h.construct(alpha)
             self.invalidate()
         elif par == Construct.HAMILTON_PATH:
             self.hamilton_const_heuristic()

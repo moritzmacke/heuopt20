@@ -57,12 +57,18 @@ if __name__ == '__main__':
         best_sol = solution.copy()
         start = time.process_time()
         elapsed = 0
+        found_obj_vals = set() # this will grow too large eventually, need better way to see if should increase alpha
+        alpha_val = 0
         while elapsed < ownsettings['mh_ttime']:
-            solution.construct(Construct.GREEDY_EDGE_RANDOM, None)
+            solution.construct(Construct.GREEDY_EDGE_RANDOM, alpha=alpha_val)
+            elapsed = time.process_time() - start
+            print(elapsed, "alpha", alpha_val, "obj", solution.obj(), "best", best_sol.obj())
+#            print(len(found_obj_vals))
+            if solution.obj() in found_obj_vals:
+                alpha_val = min(alpha_val + 0.01, 0.5)
+            found_obj_vals.add(solution.obj())
             if solution.is_better(best_sol):
                 best_sol, solution = solution, best_sol
-            elapsed = time.process_time() - start
-            print(elapsed, "obj", solution.obj())
         
         print("best obj", best_sol.obj())
         best_sol.check()
