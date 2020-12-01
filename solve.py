@@ -19,7 +19,7 @@ def add_general_arguments_and_parse_settings(default_inst_file: str = '0010.txt'
     :param default_inst_file: default instance file to be loaded and solved
     """
     parser = get_settings_parser()
-    parser.add_argument("--alg", type=str, default='gvns', help='optimization algorithm to be used '
+    parser.add_argument("--alg", type=str, default='vnd', help='optimization algorithm to be used '
                                                                 '(just_const, just_rconst, grasp, lsearch, gvns)')
     parser.add_argument("--inst_file", type=str, default=default_inst_file,
                         help='problem instance file')
@@ -74,6 +74,15 @@ if __name__ == '__main__':
         logger.info("")
         alg.method_statistics()
         alg.main_results()
-
+    elif settings.alg == "vnd":
+        alg = GVNS(solution, [], random.sample([
+            Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST)),
+            Method("li_3opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT3, Step.BEST)),
+            Method("li_sblock_best", CBTSPSolution.local_improve, (Neighbor.SBLOCK, Step.BEST))
+        ], 3), [], ownsettings)
+        alg.vnd(solution)
+        logger.info("")
+        alg.method_statistics()
+        alg.main_results()
 
 #    print(solution, solution.obj())
