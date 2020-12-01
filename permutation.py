@@ -116,6 +116,8 @@ class PermutationSolution(VectorSolution, ABC):
                 yield (p,p,q+1), (q,q,p)
                 yield (q,q,p), (p,p,q+1)
     
+    
+    
     def generate_two_exchange_neighborhood(self):
         n = self.inst.n
         order = np.arange(n)
@@ -134,6 +136,16 @@ class PermutationSolution(VectorSolution, ABC):
                 p,q = (p1, p2) if (p1 < p2) else (p2, p1)
                 yield (p,q), (p,q)
                 
+    def generate_single_move_neighborhood(self):
+        n = self.inst.n
+        order = np.arange(n)
+        np.random.shuffle(order)
+        for i,p1 in enumerate(order[:n-1]):
+            for p2 in order[i+1:n]:
+                p,q = (p1, p2) if (p1 < p2) else (p2, p1)
+                yield (p,q), (q+1,p) 
+                               
+                
     def generate_three_opt_neighborhood(self):
         raise NotImplementedError
     
@@ -147,15 +159,9 @@ class PermutationSolution(VectorSolution, ABC):
                 ins,blk = (p1, p2) if (p1 < p2) else (p2, p1)
                 seqend = (blk + block_len) % n
                 if seqend > blk or ins > seqend: 
-                    #move seq at q before p
-                    move = (ins,blk,0) 
-                    # 3rd parameter in move is so inverse can restore original exactly
-                    # not sure that's the best way...
-                    if seqend < blk:
-                        inverse = (n, ins - seqend, seqend)
-                    else:
-                        inverse = (blk, ins, 0)
-                    yield move, inverse
+                    #move seq at blk before ins
+                    yield (ins,blk), (blk,ins) #cheating here and in apply function for reverse move...
+                                               #just assume normal move is always p1<p2
 #        raise NotImplementedError
 
 
@@ -177,6 +183,26 @@ class PermutationSolution(VectorSolution, ABC):
 #        print("after inv  ",self.x)
         self.obj_val = orig_obj
         return delta
+    
+    def single_move_delta_eval(self, p1: int, p2: int) -> int:
+        """p2 moved in before p1"""
+        
+        n = len(self.x)
+        d = self.inst.weights
+        
+        ipred_p1 = (p1 - 1) % n
+        ipred_p2 = (p2 - 1) % n
+        isucc_p2 = (p2 + 1) % n
+        xpred_p1 = self.x[ipred_p1]
+        xpred_p2 = self.x[ipred_p2]
+        xsucc_p2 = self.x[isucc_p2]
+        x_p1 = self.x[p1]
+        x_p2 = self.x[p2]
+        
+        delta = d[xpred_p1][x_p2] + d[x_p2][x_p1] + d[xpred_p2][xsucc_p2] \
+              - d[xpred_p1][x_p1] - d[xpred_p2][x_p2] - d[x_p2][xsucc_p2]
+          
+        return delta        
     
     def two_half_opt_move_delta_eval(self, p1: int, p2: int, p3: int) -> int:
         """ """
@@ -319,7 +345,7 @@ class PermutationSolution(VectorSolution, ABC):
         x_p2 = self.x[p2]
         x_subseq_end = self.x[(p2 + 2) % n]
         x_subseq_end_succ = self.x[(p2 + 3) % n]
-        d = self.inst_weights
+        d = self.inst.weights
 
         # Added edges: predecessor of p1 to p2, subseq end to p1, predecessor of p2 to successor of subseq end
         # Lost edges: predecessor of p1 to p1, predecessor of p2 to p2, subseq end to successor of subseq end
@@ -329,6 +355,12 @@ class PermutationSolution(VectorSolution, ABC):
         return delta
 
     """Application methods for different neighborhood structures"""
+    
+    def apply_single_move(self, at: int, p: int):
+        if at < p:
+            self.x = np.concatenate((self.x[:at], self.x[p:p+1], self.x[at:p], self.x[p+1:]))
+        else:
+            self.x = np.concatenate((self.x[:p], self.x[p+1:at], self.x[p:p+1], self.x[at:]))
     
     def apply_two_half_opt_move(self, p1: int, p2: int, p3: int):
         
@@ -379,42 +411,42 @@ class PermutationSolution(VectorSolution, ABC):
         """The subsequence of length 3 starting at p2 is moved before p1 in self.x.
 
         Works the same way as apply_two_opt_move from the base class, so no value update or invalidation is done.
+        
+        Only works for moves with p1 < p2, other case is assumed we want to reverse application of a move of first type
         """
         
         if p2 < p1:
             #special treatment for inverse move
-
-            split = n - p1
-            if split < 3:
-                block_a = [p2:split]
-                block_b = [p2+split:p2+3]
-                
-            block_b + pre + mid + block_a
-
-            pre = self.x[:p2]            
-            block_a = self.x[p2:p2+3]
-            block_b = 
-            post = self.x[p2+3:p1]
+       
+            #here p1 is were original block was, p2 moved block location
+            block_overflow = max((p1 + 3) - len(self.x), 0) 
+            a_len = 3 - block_overflow
+                        
+            blk = p2-block_overflow
+            block_a = self.x[blk:(blk+a_len)]
+            block_b = self.x[(blk+a_len):blk+3]
+             
+            pre = self.x[:blk]
+            mid = self.x[(blk + 3):(p1 + 3)]
+            post = self.x[(p1 + 3):]
             
-            shift = self.x[p1:]
+#            print(block_a, block_b, pre, mid, post)
             
+            self.x = np.concatenate((block_b,pre,mid,block_a,post))
             
         else:
             #p1 < p2
-            block_a = self.x[p2:min(p2+3,n)]
-            seq_end = (p2 + 3) % n
-            seq_overflow = max((p2 + 3) - n, 0) 
-            block_b = self.x[:seq_overflow]
+            block_overflow = max((p2  + 3) - len(self.x), 0) 
+            a_len = 3 - block_overflow
+            block_a = self.x[p2:(p2 + a_len)]
+            block_b = self.x[:block_overflow]
             
-            pre = self.x[seq_overflow:p1]
+            pre = self.x[block_overflow:p1]
             mid = self.x[p1:p2]
-            post = self.x[p2+3:]
+            post = self.x[(p2 + 3):]
             
-            self.x = pre + block_a + block_b + mid + post
-        
-        
-        
-        self.x = self.x[:p1] + self.x[p2:(p2 + 3)] + self.x[p1:p2] + self.x[(p2 + 3):]
+            self.x = np.concatenate((pre, block_a, block_b, mid, post))
+
         
     """Unchanged from pymhlib so far"""
 

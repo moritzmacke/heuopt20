@@ -27,9 +27,10 @@ class Construct(IntEnum):
 class Neighbor(IntEnum):
     KOPT2 = 1
     KOPT3 = 2
-    XCHG = 3
-    SBLOCK = 4
-    KOPT2HALF = 5
+    XCHG = 3        #swap two nodes
+    SMOVE = 4       #move single node
+    SBLOCK = 5      #move short sequence of nodes
+    KOPT2HALF = 6
 
 class CBTSPInstance:
     """
@@ -199,6 +200,16 @@ class CBTSPSolution(PermutationSolution):
             app = PermutationSolution.apply_two_exchange_move
             delta = PermutationSolution.two_exchange_move_delta_eval
             self.neighborhood_search(gen, app, delta, step)
+        elif neighbor == Neighbor.SMOVE:
+            gen = PermutationSolution.generate_single_move_neighborhood
+            app = PermutationSolution.apply_single_move
+            delta = PermutationSolution.single_move_delta_eval
+            self.neighborhood_search(gen, app, delta, step)
+        elif neighbor == Neighbor.SBLOCK:
+            gen = PermutationSolution.generate_short_block_neighborhood
+            app = PermutationSolution.apply_short_block_move
+            delta = PermutationSolution.short_block_delta_eval
+            self.neighborhood_search(gen, app, delta, step)
         elif neighbor == Neighbor.KOPT2HALF:
             gen = PermutationSolution.generate_two_half_opt_neighborhood
             app = PermutationSolution.apply_two_half_opt_move
@@ -232,6 +243,16 @@ if __name__ == '__main__':
     
     inst = CBTSPInstance("./instances/0010.txt")
     sol = CBTSPSolution(inst)
-    ms = [m for m in sol.generate_short_block_neighborhood()]
-    print(sorted(ms))
+    ms = sorted([m for m in sol.generate_short_block_neighborhood()])
+    print(ms)
+    
+    for (i,j),(ri,rj) in ms:
+        sol2 = sol.copy()
+        print(sol2)
+        sol2.apply_short_block_move(i,j)
+        print(sol2, (i,j))
+        sol2.apply_short_block_move(ri,rj)
+        print(sol2, (ri,rj),"\n")
+        for i in range(len(sol.x)):
+            assert(sol.x[i] == sol2.x[i])
 
