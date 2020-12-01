@@ -81,6 +81,15 @@ class Edge:
     def __eq__(self, other):
         return self.p.idx == other.p.idx and self.q.idx == other.q.idx
 
+def set_set(sets, sidx, to):
+    
+    if sets[sidx].fid == sidx:
+        found
+    else:
+        sets[sidx].fid = set_set()
+
+
+
 class GreedyEdgeConst:
     """ Choose edges that have the least neighbors greedily
         There might still be some bugs in here so there is not always a correct length solution...
