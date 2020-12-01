@@ -72,7 +72,7 @@ if __name__ == '__main__':
         
         print("best obj", best_sol.obj())
         best_sol.check()
-        
+
     elif settings.alg == 'grasp':
         alg = GRASP(solution, Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM), Method("search", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST)), ownsettings)
         alg.run()
