@@ -1,5 +1,6 @@
 import logging
 from typing import Callable
+import time
 
 from pymhlib.gvns import GVNS
 from pymhlib.log import init_logger
@@ -53,9 +54,25 @@ if __name__ == '__main__':
         solution.check()
         print("obj", solution.obj())
     elif settings.alg == 'just_rconst':
-        solution.construct(Construct.GREEDY_EDGE_RANDOM, None)
-        solution.check()
-        print("obj", solution.obj())
+        best_sol = solution.copy()
+        start = time.process_time()
+        elapsed = 0
+        found_obj_vals = set() # this will grow too large eventually, need better way to see if should increase alpha
+        alpha_val = 0
+        while elapsed < ownsettings['mh_ttime']:
+            solution.construct(Construct.GREEDY_EDGE_RANDOM, alpha=alpha_val)
+            elapsed = time.process_time() - start
+            print(elapsed, "alpha", alpha_val, "obj", solution.obj(), "best", best_sol.obj())
+#            print(len(found_obj_vals))
+            if solution.obj() in found_obj_vals:
+                alpha_val = min(alpha_val + 0.01, 0.5)
+            found_obj_vals.add(solution.obj())
+            if solution.is_better(best_sol):
+                best_sol, solution = solution, best_sol
+        
+        print("best obj", best_sol.obj())
+        best_sol.check()
+
     elif settings.alg == 'grasp':
         alg = GRASP(solution, Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM), Method("search", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST)), ownsettings)
         alg.run()

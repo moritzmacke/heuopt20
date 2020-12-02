@@ -12,10 +12,10 @@ from pymhlib.gvns import GVNS
 from pymhlib.scheduler import Method
 from pymhlib.solution import Solution
 
+from permutation import PermutationSolution, Step
 # from pymhlib.settings import get_settings_parser
 from hamcycle import HamCycle
 from greedyedge import GreedyEdgeConst
-from permutation import PermutationSolution
 
 
 class Construct(IntEnum):
@@ -27,14 +27,10 @@ class Construct(IntEnum):
 class Neighbor(IntEnum):
     KOPT2 = 1
     KOPT3 = 2
-    XCHG = 3
-    SBLOCK = 4
-
-class Step(IntEnum):
-    RANDOM = 0
-    BEST = 1
-    FIRST = 2
-
+    XCHG = 3        #swap two nodes
+    SMOVE = 4       #move single node
+    SBLOCK = 5      #move short sequence of nodes
+    KOPT2HALF = 6
 
 class CBTSPInstance:
     """
@@ -63,14 +59,13 @@ class CBTSPInstance:
         ws = sorted([e[2] for e in edges])
         minw = sum(ws[0:n])
         maxw = sum(ws[-n:])
-
         #M = maxw - min(minw,0)
         M = max(abs(minw),abs(maxw)) - sum(ws[0:n-1]) + 1
            
         # adjacency matrix
         weights = np.full((n, n), M)
         for (n1, n2, w) in edges:
-        #    print(n1,n2,w)
+#            print(n1,n2,w)
             weights[n1][n2] = weights[n2][n1] = w  #
 
 
@@ -154,17 +149,17 @@ class CBTSPSolution(PermutationSolution):
 
     """Solution construction functions"""
 
-    def construct(self, par, _result):
+    def construct(self, par, _result=None, alpha=0.1):
         """Scheduler method that constructs a new solution.
-
         """
+        
         if par == Construct.GREEDY_EDGE:
             h = GreedyEdgeConst(self.inst.n, self.inst.edges)
             self.x[:] = h.construct(0)
             self.invalidate()
         elif par == Construct.GREEDY_EDGE_RANDOM:
             h = GreedyEdgeConst(self.inst.n, self.inst.edges)
-            self.x[:] = h.construct(0.1)
+            self.x[:] = h.construct(alpha)
             self.invalidate()
         elif par == Construct.HAMILTON_PATH:
             self.hamilton_const_heuristic()
@@ -190,7 +185,7 @@ class CBTSPSolution(PermutationSolution):
     """Methods for local search"""
     
     def local_improve(self, _par, _result):
-        self.own_two_opt_neighborhood_search(True)
+#        self.own_two_opt_neighborhood_search(True)
 
         neighbor, step = _par
 
@@ -204,6 +199,21 @@ class CBTSPSolution(PermutationSolution):
             gen = PermutationSolution.generate_two_exchange_neighborhood
             app = PermutationSolution.apply_two_exchange_move
             delta = PermutationSolution.two_exchange_move_delta_eval
+            self.neighborhood_search(gen, app, delta, step)
+        elif neighbor == Neighbor.SMOVE:
+            gen = PermutationSolution.generate_single_move_neighborhood
+            app = PermutationSolution.apply_single_move
+            delta = PermutationSolution.single_move_delta_eval
+            self.neighborhood_search(gen, app, delta, step)
+        elif neighbor == Neighbor.SBLOCK:
+            gen = PermutationSolution.generate_short_block_neighborhood
+            app = PermutationSolution.apply_short_block_move
+            delta = PermutationSolution.short_block_delta_eval
+            self.neighborhood_search(gen, app, delta, step)
+        elif neighbor == Neighbor.KOPT2HALF:
+            gen = PermutationSolution.generate_two_half_opt_neighborhood
+            app = PermutationSolution.apply_two_half_opt_move
+            delta = PermutationSolution.two_half_opt_move_delta_eval
             self.neighborhood_search(gen, app, delta, step)
         else:
             raise NotImplementedError
@@ -221,9 +231,28 @@ class CBTSPSolution(PermutationSolution):
     def crossover(self, other: 'CBTSPSolution') -> 'CBTSPSolution':
         """Perform edge recombination."""
         return self.edge_recombination(other)
-
+    
     def is_delta_improvement(self, delta):
         """Determines whether a given delta value is considered an improvement.
         A delta is an improvement if and only if adding it to the current objective value results in a value closer to 0.
         """
         return abs(self.obj_val + delta) < abs(self.obj_val)
+    
+
+if __name__ == '__main__':
+    
+    inst = CBTSPInstance("./instances/0010.txt")
+    sol = CBTSPSolution(inst)
+    ms = sorted([m for m in sol.generate_short_block_neighborhood()])
+    print(ms)
+    
+    for (i,j),(ri,rj) in ms:
+        sol2 = sol.copy()
+        print(sol2)
+        sol2.apply_short_block_move(i,j)
+        print(sol2, (i,j))
+        sol2.apply_short_block_move(ri,rj)
+        print(sol2, (ri,rj),"\n")
+        for i in range(len(sol.x)):
+            assert(sol.x[i] == sol2.x[i])
+
