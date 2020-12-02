@@ -1,5 +1,6 @@
 import logging
 from typing import Callable
+import time
 
 from pymhlib.gvns import GVNS
 from pymhlib.log import init_logger
@@ -9,6 +10,7 @@ from pymhlib.solution import Solution
 
 from cbtsp import *
 from grasp import GRASP
+from sa_cbtsp import SA_CBTSP
 
 inst_dir = "instances/"
 
@@ -52,9 +54,25 @@ if __name__ == '__main__':
         solution.check()
         print("obj", solution.obj())
     elif settings.alg == 'just_rconst':
-        solution.construct(Construct.GREEDY_EDGE_RANDOM, None)
-        solution.check()
-        print("obj", solution.obj())
+        best_sol = solution.copy()
+        start = time.process_time()
+        elapsed = 0
+        found_obj_vals = set() # this will grow too large eventually, need better way to see if should increase alpha
+        alpha_val = 0
+        while elapsed < ownsettings['mh_ttime']:
+            solution.construct(Construct.GREEDY_EDGE_RANDOM, alpha=alpha_val)
+            elapsed = time.process_time() - start
+            print(elapsed, "alpha", alpha_val, "obj", solution.obj(), "best", best_sol.obj())
+#            print(len(found_obj_vals))
+            if solution.obj() in found_obj_vals:
+                alpha_val = min(alpha_val + 0.01, 0.5)
+            found_obj_vals.add(solution.obj())
+            if solution.is_better(best_sol):
+                best_sol, solution = solution, best_sol
+
+        print("best obj", best_sol.obj())
+        best_sol.check()
+
     elif settings.alg == 'grasp':
         alg = GRASP(solution, Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM), Method("search", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST)), ownsettings)
         alg.run()
@@ -70,6 +88,17 @@ if __name__ == '__main__':
         raise NotImplementedError
     elif settings.alg == 'gvns':
         alg = GVNS(solution, [Method(f"ch0", CBTSPSolution.construct, Construct.HAMILTON_PATH)], [Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST))], [Method(f"sh{i}", CBTSPSolution.shaking, i) for i in range(1, 2)], ownsettings)
+        alg.run()
+        logger.info("")
+        alg.method_statistics()
+        alg.main_results()
+    elif settings.alg == "sa":
+        sa_settings = {
+            'mh_titer': -1,
+            'mh_tciter': 10000, # Shortcut: Abort after 10000 non-improving iterations - remove for real tests
+            'mh_ttime': 15*60 # Limited to 15 min CPU time
+        }
+        alg = SA_CBTSP(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM)], CBTSPSolution.random_move_delta_eval, CBTSPSolution.apply_neighborhood_move, None, sa_settings)
         alg.run()
         logger.info("")
         alg.method_statistics()

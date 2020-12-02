@@ -1,4 +1,3 @@
- 
 import random
 import numpy as np
 import math
@@ -14,28 +13,31 @@ from pymhlib.scheduler import Method
 from pymhlib.solution import Solution
 
 from permutation import PermutationSolution, Step
-#from pymhlib.settings import get_settings_parser
+# from pymhlib.settings import get_settings_parser
 from hamcycle import HamCycle
 from greedyedge import GreedyEdgeConst
+
 
 class Construct(IntEnum):
     NONE = 0
     GREEDY_EDGE = 1
     GREEDY_EDGE_RANDOM = 2
     HAMILTON_PATH = 3
-    
+
 class Neighbor(IntEnum):
     KOPT2 = 1
     KOPT3 = 2
-    XCHG = 3
-    SBLOCK = 4
+    XCHG = 3        #swap two nodes
+    SMOVE = 4       #move single node
+    SBLOCK = 5      #move short sequence of nodes
+    KOPT2HALF = 6
 
 class CBTSPInstance:
     """
     Attributes
-        - n: 
-        - weights: 
-        - edges: 
+        - n:
+        - weights:
+        - edges:
         - valid_threshold
     """
 
@@ -52,20 +54,21 @@ class CBTSPInstance:
             for line in lines[1:]:
                 s = line.split()
                 n1, n2, w = int(s[0]), int(s[1]), int(s[2])
-                edges.append((n1,n2,w))
-               
-        ws = sorted([ e[2] for e in edges ])
+                edges.append((n1, n2, w))
+
+        ws = sorted([e[2] for e in edges])
         minw = sum(ws[0:n])
         maxw = sum(ws[-n:])
         #M = maxw - min(minw,0)
         M = max(abs(minw),abs(maxw)) - sum(ws[0:n-1]) + 1
            
         # adjacency matrix
-        weights = np.full((n,n),M)
+        weights = np.full((n, n), M)
         for (n1, n2, w) in edges:
 #            print(n1,n2,w)
-            weights[n1][n2] = weights[n2][n1] = w #
-                        
+            weights[n1][n2] = weights[n2][n1] = w  #
+
+
         self.weights = weights
         self.n = n
         self.valid_threshold = maxw
@@ -75,8 +78,8 @@ class CBTSPInstance:
     def __repr__(self):
         """Write out the instance data."""
         return f"n={self.n},\nweights={self.weights!r}\n"
-    
-    
+
+
 class CBTSPSolution(PermutationSolution):
     """Solution to a TSP instance.
 
@@ -122,46 +125,46 @@ class CBTSPSolution(PermutationSolution):
         for i in range(self.inst.n - 1):
             w += self.inst.weights[self.x[i]][self.x[i + 1]]
         w += self.inst.weights[self.x[-1]][self.x[0]]
-        return w #abs(w)
+        return w  # abs(w)
 
     def check(self):
         """Check if valid solution.
 
         :raises ValueError: if problem detected.
         """
-        
-        #?
+
+        # ?
         if self.obj() > self.inst.valid_threshold:
             invalid_edges = []
             for i in range(self.inst.n):
-                j = (i+1) % self.inst.n
-                p,q = self.x[i], self.x[j]
-                if self.inst.weights[p,q] == self.inst.bigM:
-                    invalid_edges.append((p,q))
+                j = (i + 1) % self.inst.n
+                p, q = self.x[i], self.x[j]
+                if self.inst.weights[p, q] == self.inst.bigM:
+                    invalid_edges.append((p, q))
             raise ValueError("{} invalid edges used in solution: {}".format(len(invalid_edges), invalid_edges))
-        
+
         if len(self.x) != self.inst.n:
             raise ValueError("Invalid length of solution")
         super().check()
 
     """Solution construction functions"""
 
-    def construct(self, par, _result):
+    def construct(self, par, _result=None, alpha=0.1):
         """Scheduler method that constructs a new solution.
-
         """
+        
         if par == Construct.GREEDY_EDGE:
             h = GreedyEdgeConst(self.inst.n, self.inst.edges)
-            self.x[:] = h.construct(0) 
+            self.x[:] = h.construct(0)
             self.invalidate()
         elif par == Construct.GREEDY_EDGE_RANDOM:
             h = GreedyEdgeConst(self.inst.n, self.inst.edges)
-            self.x[:] = h.construct(0.1)
+            self.x[:] = h.construct(alpha)
             self.invalidate()
         elif par == Construct.HAMILTON_PATH:
             self.hamilton_const_heuristic()
         else:
-            self.initialize(par) # random order of nodes
+            self.initialize(par)  # random order of nodes
 
     def hamilton_const_heuristic(self):
         """Try to find a hamiltonian cycle with valid edges, ignores edge weights
@@ -169,7 +172,6 @@ class CBTSPSolution(PermutationSolution):
         h = HamCycle(self.inst)
         self.x[:] = h.construct(True)
         self.invalidate()
-
 
     def shaking(self, par, result):
         """Scheduler method that performs shaking by 'par'-times swapping a pair of randomly chosen cities."""
@@ -183,9 +185,10 @@ class CBTSPSolution(PermutationSolution):
     """Methods for local search"""
     
     def local_improve(self, _par, _result):
-        
+#        self.own_two_opt_neighborhood_search(True)
+
         neighbor, step = _par
-        
+
         if neighbor == Neighbor.KOPT2:
 #            self.own_two_opt_neighborhood_search(step == Step.BEST)
             gen = PermutationSolution.generate_two_opt_neighborhood
@@ -197,10 +200,23 @@ class CBTSPSolution(PermutationSolution):
             app = PermutationSolution.apply_two_exchange_move
             delta = PermutationSolution.two_exchange_move_delta_eval
             self.neighborhood_search(gen, app, delta, step)
+        elif neighbor == Neighbor.SMOVE:
+            gen = PermutationSolution.generate_single_move_neighborhood
+            app = PermutationSolution.apply_single_move
+            delta = PermutationSolution.single_move_delta_eval
+            self.neighborhood_search(gen, app, delta, step)
+        elif neighbor == Neighbor.SBLOCK:
+            gen = PermutationSolution.generate_short_block_neighborhood
+            app = PermutationSolution.apply_short_block_move
+            delta = PermutationSolution.short_block_delta_eval
+            self.neighborhood_search(gen, app, delta, step)
+        elif neighbor == Neighbor.KOPT2HALF:
+            gen = PermutationSolution.generate_two_half_opt_neighborhood
+            app = PermutationSolution.apply_two_half_opt_move
+            delta = PermutationSolution.two_half_opt_move_delta_eval
+            self.neighborhood_search(gen, app, delta, step)
         else:
             raise NotImplementedError
-
-
 
     def random_move_delta_eval(self) -> Tuple[Any, TObj]:
         """Choose a random move and perform delta evaluation for it, return (move, delta_obj)."""
@@ -215,3 +231,28 @@ class CBTSPSolution(PermutationSolution):
     def crossover(self, other: 'CBTSPSolution') -> 'CBTSPSolution':
         """Perform edge recombination."""
         return self.edge_recombination(other)
+    
+    def is_delta_improvement(self, delta):
+        """Determines whether a given delta value is considered an improvement.
+        A delta is an improvement if and only if adding it to the current objective value results in a value closer to 0.
+        """
+        return abs(self.obj_val + delta) < abs(self.obj_val)
+    
+
+if __name__ == '__main__':
+    
+    inst = CBTSPInstance("./instances/0010.txt")
+    sol = CBTSPSolution(inst)
+    ms = sorted([m for m in sol.generate_short_block_neighborhood()])
+    print(ms)
+    
+    for (i,j),(ri,rj) in ms:
+        sol2 = sol.copy()
+        print(sol2)
+        sol2.apply_short_block_move(i,j)
+        print(sol2, (i,j))
+        sol2.apply_short_block_move(ri,rj)
+        print(sol2, (ri,rj),"\n")
+        for i in range(len(sol.x)):
+            assert(sol.x[i] == sol2.x[i])
+
