@@ -147,7 +147,14 @@ class PermutationSolution(VectorSolution, ABC):
                                
                 
     def generate_three_opt_neighborhood(self):
-        raise NotImplementedError
+        n = self.inst.n
+        order = np.arange(n)
+        np.random.shuffle(order)
+        for i, p1 in enumerate(order[:n - 2]):
+            for j, p2 in enumerate(order[i + 1:n-1]):
+                for p3 in order[(i+1)+j+1:n]:
+                    p, q, r = tuple(sorted([p1, p2, p3]))
+                    yield (p, q, r), (r, p, p + (r-q))
     
     def generate_short_block_neighborhood(self, block_len = 3):
         """ """
@@ -311,7 +318,7 @@ class PermutationSolution(VectorSolution, ABC):
         The function returns the difference in the objective function if the move would be performed,
         the solution, however, is not changed.
         """
-        assert (p1 < p2)
+        # assert (p1 < p2)
         assert (p2 < p3)
         n = len(self.x)
 
@@ -321,7 +328,7 @@ class PermutationSolution(VectorSolution, ABC):
         x_p2 = self.x[p2]
         x_p3 = self.x[p3]
         x_p3_succ = self.x[(p3 + 1) % n]
-        d = self.inst_weights
+        d = self.inst.weights
 
         # Added edges: predecessor of p1 to p2, p3 to p1, predecessor of p2 to successor of p3
         # Lost edges: predecessor of p1 to p1, predecessor of p2 to p2, p3 to successor of p3
@@ -396,7 +403,7 @@ class PermutationSolution(VectorSolution, ABC):
 
         Works the same way as apply_two_opt_move from the base class, so no value update or invalidation is done.
         """
-        self.x = self.x[:p1] + self.x[p2:(p3+1)] + self.x[p1:p2] + self.x[(p3+1):]
+        self.x = np.concatenate([self.x[:p1], self.x[p2:(p3+1)], self.x[p1:p2], self.x[(p3+1):]]) # For some reason only this function throws an error using +?
 
     def _apply_short_block_move(self, p1: int, p2: int):
         """The subsequence of length 3 starting at p2 is moved before p1 in self.x.

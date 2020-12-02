@@ -94,7 +94,7 @@ class CBTSPSolution(PermutationSolution):
         super().__init__(inst.n, inst=inst)
         self.obj_val_valid = False
 
-    def copy(self):
+    def copy(self): #TODO: Does this really deep copy? (VND debugging suggests otherwise...)
         sol = CBTSPSolution(self.inst)
         sol.copy_from(self)
         return sol
@@ -194,6 +194,11 @@ class CBTSPSolution(PermutationSolution):
             gen = PermutationSolution.generate_two_opt_neighborhood
             app = PermutationSolution.apply_two_opt_move
             delta = PermutationSolution.two_opt_move_delta_eval
+            self.neighborhood_search(gen, app, delta, step)
+        elif neighbor == Neighbor.KOPT3:
+            gen = PermutationSolution.generate_three_opt_neighborhood
+            app = PermutationSolution.apply_three_opt_move
+            delta = PermutationSolution.three_opt_move_delta_eval
             self.neighborhood_search(gen, app, delta, step)
         elif neighbor == Neighbor.XCHG:
             gen = PermutationSolution.generate_two_exchange_neighborhood
