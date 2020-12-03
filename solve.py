@@ -21,7 +21,7 @@ def add_general_arguments_and_parse_settings(default_inst_file: str = '0010.txt'
     :param default_inst_file: default instance file to be loaded and solved
     """
     parser = get_settings_parser()
-    parser.add_argument("--alg", type=str, default='sa', help='optimization algorithm to be used '
+    parser.add_argument("--alg", type=str, default='vnd', help='optimization algorithm to be used '
                                                                 '(just_const, just_rconst, grasp, lsearch, gvns)')
     parser.add_argument("--inst_file", type=str, default=default_inst_file,
                         help='problem instance file')
@@ -69,7 +69,7 @@ if __name__ == '__main__':
             found_obj_vals.add(solution.obj())
             if solution.is_better(best_sol):
                 best_sol, solution = solution, best_sol
-        
+
         print("best obj", best_sol.obj())
         best_sol.check()
 
@@ -103,6 +103,20 @@ if __name__ == '__main__':
             'mh_ttime': 15*60 # Limited to 15 min CPU time
         }
         alg = SA_CBTSP(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM)], CBTSPSolution.random_move_delta_eval, CBTSPSolution.apply_neighborhood_move, None, sa_settings)
+        alg.run()
+        logger.info("")
+        alg.method_statistics()
+        alg.main_results()
+    elif settings.alg == "vnd":
+        # Which neighborhoods do we want to use here?
+        alg = GVNS(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM)], random.sample([
+            Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST)),
+            Method("li_3opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT3, Step.BEST)),
+            Method("li_xchg_best", CBTSPSolution.local_improve, (Neighbor.XCHG, Step.BEST)),
+            Method("li_smove_best", CBTSPSolution.local_improve, (Neighbor.SMOVE, Step.BEST)),
+            Method("li_sblock_best", CBTSPSolution.local_improve, (Neighbor.SBLOCK, Step.BEST)),
+            Method("li_2.5opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2HALF, Step.BEST))
+        ], 6), [], ownsettings)
         alg.run()
         logger.info("")
         alg.method_statistics()
