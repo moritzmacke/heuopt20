@@ -105,11 +105,14 @@ if __name__ == '__main__':
         alg.main_results()
     elif settings.alg == "vnd":
         alg = GVNS(solution, [], random.sample([
-            Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST)),
+            #Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST)),
             Method("li_3opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT3, Step.BEST)),
-            Method("li_sblock_best", CBTSPSolution.local_improve, (Neighbor.SBLOCK, Step.BEST))
+            Method("li_xchg_best", CBTSPSolution.local_improve, (Neighbor.XCHG, Step.BEST)),
+            #Method("li_smove_best", CBTSPSolution.local_improve, (Neighbor.SMOVE, Step.BEST)),
+            Method("li_sblock_best", CBTSPSolution.local_improve, (Neighbor.SBLOCK, Step.BEST)),
+            #Method("li_2.5opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2HALF, Step.BEST))
         ], 3), [], ownsettings)
-        alg.vnd(solution)
+        alg.vnd(solution.copy()) #Needs to be a copy or update_incumbent in algorithm will override the argument
         logger.info("")
         alg.method_statistics()
         alg.main_results()

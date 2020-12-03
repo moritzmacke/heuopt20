@@ -94,7 +94,7 @@ class CBTSPSolution(PermutationSolution):
         super().__init__(inst.n, inst=inst)
         self.obj_val_valid = False
 
-    def copy(self): #TODO: Does this really deep copy? (VND debugging suggests otherwise...)
+    def copy(self):
         sol = CBTSPSolution(self.inst)
         sol.copy_from(self)
         return sol
