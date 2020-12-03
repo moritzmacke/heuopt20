@@ -195,6 +195,11 @@ class CBTSPSolution(PermutationSolution):
             app = PermutationSolution.apply_two_opt_move
             delta = PermutationSolution.two_opt_move_delta_eval
             self.neighborhood_search(gen, app, delta, step)
+        elif neighbor == Neighbor.KOPT3:
+            gen = PermutationSolution.generate_three_opt_neighborhood
+            app = PermutationSolution.apply_three_opt_move
+            delta = PermutationSolution.three_opt_move_delta_eval
+            self.neighborhood_search(gen, app, delta, step)
         elif neighbor == Neighbor.XCHG:
             gen = PermutationSolution.generate_two_exchange_neighborhood
             app = PermutationSolution.apply_two_exchange_move
