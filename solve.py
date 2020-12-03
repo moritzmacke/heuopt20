@@ -105,7 +105,7 @@ if __name__ == '__main__':
         alg.main_results()
     elif settings.alg == "vnd":
         # Which neighborhoods do we want to use here?
-        alg = GVNS(solution, [], random.sample([
+        alg = GVNS(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM)], random.sample([
             Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST)),
             Method("li_3opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT3, Step.BEST)),
             Method("li_xchg_best", CBTSPSolution.local_improve, (Neighbor.XCHG, Step.BEST)),
@@ -113,7 +113,7 @@ if __name__ == '__main__':
             Method("li_sblock_best", CBTSPSolution.local_improve, (Neighbor.SBLOCK, Step.BEST)),
             Method("li_2.5opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2HALF, Step.BEST))
         ], 6), [], ownsettings)
-        alg.vnd(solution.copy()) #Needs to be a copy or update_incumbent in algorithm will override the argument
+        alg.run()
         logger.info("")
         alg.method_statistics()
         alg.main_results()
