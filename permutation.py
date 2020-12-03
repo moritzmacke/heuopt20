@@ -408,7 +408,7 @@ class PermutationSolution(VectorSolution, ABC):
 
         Works the same way as apply_two_opt_move from the base class, so no value update or invalidation is done.
         """
-        self.x = np.concatenate([self.x[:p1], self.x[p2:(p3+1)], self.x[p1:p2], self.x[(p3+1):]]) # For some reason only this function throws an error using +?
+        self.x = np.concatenate([self.x[:p1], self.x[p2:(p3+1)], self.x[p1:p2], self.x[(p3+1):]])
 
     def _apply_short_block_move(self, p1: int, p2: int):
         """The subsequence of length 3 starting at p2 is moved before p1 in self.x.
