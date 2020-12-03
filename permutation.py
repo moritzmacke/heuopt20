@@ -318,9 +318,14 @@ class PermutationSolution(VectorSolution, ABC):
         The function returns the difference in the objective function if the move would be performed,
         the solution, however, is not changed.
         """
-        # assert (p1 < p2)
+        #assert (p1 < p2)
         assert (p2 < p3)
+
         n = len(self.x)
+
+        if p3 == (p1-1) % n:
+            # no effect if the endpoint of the moved subsequence is already right before the target
+            return 0
 
         x_p1_pred = self.x[(p1 - 1) % n]
         x_p1 = self.x[p1]
