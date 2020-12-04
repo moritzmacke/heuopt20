@@ -12,7 +12,7 @@ from pymhlib.gvns import GVNS
 from pymhlib.scheduler import Method
 from pymhlib.solution import Solution
 
-from permutation import PermutationSolution, Step
+from permutation import PermutationSolution, Step, NeighborhoodSpec
 # from pymhlib.settings import get_settings_parser
 from hamcycle import HamCycle
 from greedyedge import GreedyEdgeConst
@@ -23,14 +23,6 @@ class Construct(IntEnum):
     GREEDY_EDGE = 1
     GREEDY_EDGE_RANDOM = 2
     HAMILTON_PATH = 3
-
-class Neighbor(IntEnum):
-    KOPT2 = 1
-    KOPT3 = 2
-    XCHG = 3        #swap two nodes
-    SMOVE = 4       #move single node
-    SBLOCK = 5      #move short sequence of nodes
-    KOPT2HALF = 6
 
 class CBTSPInstance:
     """
@@ -172,6 +164,9 @@ class CBTSPSolution(PermutationSolution):
         h = HamCycle(self.inst)
         self.x[:] = h.construct(True)
         self.invalidate()
+        
+    def dummy_shake(self, par, result):
+        pass
 
     def shaking(self, par, result):
         """Scheduler method that performs shaking by 'par'-times swapping a pair of randomly chosen cities."""
@@ -185,41 +180,9 @@ class CBTSPSolution(PermutationSolution):
     """Methods for local search"""
     
     def local_improve(self, _par, _result):
-#        self.own_two_opt_neighborhood_search(True)
-
         neighbor, step = _par
-
-        if neighbor == Neighbor.KOPT2:
-#            self.own_two_opt_neighborhood_search(step == Step.BEST)
-            gen = PermutationSolution.generate_two_opt_neighborhood
-            app = PermutationSolution.apply_two_opt_move
-            delta = PermutationSolution.two_opt_move_delta_eval
-            self.neighborhood_search(gen, app, delta, step)
-        elif neighbor == Neighbor.KOPT3:
-            gen = PermutationSolution.generate_three_opt_neighborhood
-            app = PermutationSolution.apply_three_opt_move
-            delta = PermutationSolution.three_opt_move_delta_eval
-            self.neighborhood_search(gen, app, delta, step)
-        elif neighbor == Neighbor.XCHG:
-            gen = PermutationSolution.generate_two_exchange_neighborhood
-            app = PermutationSolution.apply_two_exchange_move
-            delta = PermutationSolution.two_exchange_move_delta_eval
-            self.neighborhood_search(gen, app, delta, step)
-        elif neighbor == Neighbor.SMOVE:
-            gen = PermutationSolution.generate_single_move_neighborhood
-            app = PermutationSolution.apply_single_move
-            delta = PermutationSolution.single_move_delta_eval
-            self.neighborhood_search(gen, app, delta, step)
-        elif neighbor == Neighbor.SBLOCK:
-            gen = PermutationSolution.generate_short_block_neighborhood
-            app = PermutationSolution.apply_short_block_move
-            delta = PermutationSolution.short_block_delta_eval
-            self.neighborhood_search(gen, app, delta, step)
-        elif neighbor == Neighbor.KOPT2HALF:
-            gen = PermutationSolution.generate_two_half_opt_neighborhood
-            app = PermutationSolution.apply_two_half_opt_move
-            delta = PermutationSolution.two_half_opt_move_delta_eval
-            self.neighborhood_search(gen, app, delta, step)
+        if isinstance(neighbor, NeighborhoodSpec):
+            self.neighborhood_search(neighbor, step)
         else:
             raise NotImplementedError
 
@@ -243,21 +206,3 @@ class CBTSPSolution(PermutationSolution):
         """
         return abs(self.obj_val + delta) < abs(self.obj_val)
     
-
-if __name__ == '__main__':
-    
-    inst = CBTSPInstance("./instances/0010.txt")
-    sol = CBTSPSolution(inst)
-    ms = sorted([m for m in sol.generate_short_block_neighborhood()])
-    print(ms)
-    
-    for (i,j),(ri,rj) in ms:
-        sol2 = sol.copy()
-        print(sol2)
-        sol2.apply_short_block_move(i,j)
-        print(sol2, (i,j))
-        sol2.apply_short_block_move(ri,rj)
-        print(sol2, (ri,rj),"\n")
-        for i in range(len(sol.x)):
-            assert(sol.x[i] == sol2.x[i])
-

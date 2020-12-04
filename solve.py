@@ -2,6 +2,8 @@ import logging
 from typing import Callable
 import time
 
+from distutils.util import strtobool
+
 from pymhlib.gvns import GVNS
 from pymhlib.log import init_logger
 from pymhlib.scheduler import Method
@@ -25,11 +27,22 @@ def add_general_arguments_and_parse_settings(default_inst_file: str = '0010.txt'
                                                                 '(just_const, just_rconst, grasp, lsearch, gvns)')
     parser.add_argument("--inst_file", type=str, default=default_inst_file,
                         help='problem instance file')
-    parser.add_argument("--use_delta_eval", type=bool, default=True, help="")
-    parser.add_argument("--neighborhood", type=str, default="2opt", help="(2opt, ...)")
-    parser.add_argument("--step_function", type=str, default="best", help="(best, first, random) improvement")
+    parser.add_argument("--incremental_delta", type=str, default=True, help="")
+    parser.add_argument("--neighborhood", type=str, default="2opt", help="for local? (2opt, 3opt, 2.5opt, xchg, insert, sblock...)")
+    parser.add_argument("--step", type=str, default="best", help="(best, first, random) improvement")
     parse_settings(seed=seed)
 
+
+param_to_neighbor = {'2opt': NeighborhoodSpec.TWO_OPT,
+                     '3opt': NeighborhoodSpec.THREE_OPT,
+                     '2.5opt': NeighborhoodSpec.TWO_HALF_OPT,
+                     'xchg': NeighborhoodSpec.TWO_XCHG,
+                     'insert': NeighborhoodSpec.SINGLE_INSERT,
+                     'sblock': NeighborhoodSpec.SHORT_BLOCK }
+
+param_to_step = {'best': Step.BEST,
+                 'first': Step.FIRST,
+                 'random': Step.RANDOM }
 
 if __name__ == '__main__':
     
@@ -47,8 +60,10 @@ if __name__ == '__main__':
     logger.info("instance read:\n" + str(instance))
     solution = CBTSPSolution(instance)
     
-    
-    
+    neighborhood = param_to_neighbor[settings.neighborhood]
+    step_func = param_to_step[settings.step]
+    incremental_eval = strtobool(settings.incremental_delta)
+   
     if settings.alg == 'just_const':
         solution.construct(Construct.HAMILTON_PATH, None)
         solution.check()
@@ -74,20 +89,36 @@ if __name__ == '__main__':
         best_sol.check()
 
     elif settings.alg == 'grasp':
-        alg = GRASP(solution, Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM), Method("search", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST)), ownsettings)
+        alg = GRASP(solution, Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM), 
+                    Method(f"li_{settings.neighborhood}_{settings.step}", CBTSPSolution.local_improve, 
+                           (neighborhood.incremental_delta(incremental_eval), step_func)), 
+                    ownsettings)
         alg.run()
         logger.info("")
         alg.method_statistics()
         alg.main_results()
     elif settings.alg == 'lsearch':
+        #if no shake method is given it always stops after one non-improving iteration
+        #no matter what. So using a dummy to make it work for random step, but not a great solution.
+        #There is also no way to keep searching past a local optimum with other step
+        #functions as no worse solution than current best is ever tried tried and they always
+        #return the same solution in a local optimum.
+        ls_settings = {'mh_tciter': -1 if step_func == Step.RANDOM else 1} 
+        ls_settings.update(ownsettings)
         
-#        print(solution, solution.obj())
-#        solution.local_improve((Neighbor.KOPT2, Step.BEST),None)
-#        print(solution, solution.obj())
-        
-        raise NotImplementedError
+        alg = GVNS(solution, [Method("ch_ham_path", CBTSPSolution.construct, Construct.HAMILTON_PATH)],
+                   [Method(f"li_{settings.neighborhood}_{settings.step}", CBTSPSolution.local_improve, 
+                           (neighborhood.incremental_delta(incremental_eval), step_func))],
+                   [Method("dummy", CBTSPSolution.dummy_shake, 0)], ls_settings)
+        alg.run()
+        logger.info("")
+        alg.method_statistics()
+        alg.main_results()
     elif settings.alg == 'gvns':
-        alg = GVNS(solution, [Method(f"ch0", CBTSPSolution.construct, Construct.HAMILTON_PATH)], [Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST))], [Method(f"sh{i}", CBTSPSolution.shaking, i) for i in range(1, 2)], ownsettings)
+        alg = GVNS(solution, [Method(f"ch0", CBTSPSolution.construct, Construct.HAMILTON_PATH)], 
+                   [Method(f"li_{settings.neighborhood}_{settings.step}", CBTSPSolution.local_improve, 
+                           (neighborhood.incremental_delta(incremental_eval), step_func))], 
+                   [Method(f"sh{i}", CBTSPSolution.shaking, i) for i in range(1, 2)], ownsettings)
         alg.run()
         logger.info("")
         alg.method_statistics()
@@ -105,13 +136,13 @@ if __name__ == '__main__':
         alg.main_results()
     elif settings.alg == "vnd":
         # Which neighborhoods do we want to use here?
-        alg = GVNS(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM)], random.sample([
-            Method("li_2opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2, Step.BEST)),
-            Method("li_3opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT3, Step.BEST)),
-            Method("li_xchg_best", CBTSPSolution.local_improve, (Neighbor.XCHG, Step.BEST)),
-            Method("li_smove_best", CBTSPSolution.local_improve, (Neighbor.SMOVE, Step.BEST)),
-            Method("li_sblock_best", CBTSPSolution.local_improve, (Neighbor.SBLOCK, Step.BEST)),
-            Method("li_2.5opt_best", CBTSPSolution.local_improve, (Neighbor.KOPT2HALF, Step.BEST))
+        alg = GVNS(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE)], random.sample([
+            Method("li_2opt_best", CBTSPSolution.local_improve, (NeighborhoodSpec.TWO_OPT, Step.BEST)),
+            Method("li_3opt_best", CBTSPSolution.local_improve, (NeighborhoodSpec.THREE_OPT, Step.BEST)),
+            Method("li_xchg_best", CBTSPSolution.local_improve, (NeighborhoodSpec.TWO_XCHG, Step.BEST)),
+            Method("li_smove_best", CBTSPSolution.local_improve, (NeighborhoodSpec.SINGLE_INSERT, Step.BEST)),
+            Method("li_sblock_best", CBTSPSolution.local_improve, (NeighborhoodSpec.SHORT_BLOCK, Step.BEST)),
+            Method("li_2.5opt_best", CBTSPSolution.local_improve, (NeighborhoodSpec.TWO_HALF_OPT, Step.BEST))
         ], 6), [], ownsettings)
         alg.run()
         logger.info("")
