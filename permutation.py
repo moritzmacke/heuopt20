@@ -445,6 +445,43 @@ class PermutationSolution(VectorSolution, ABC):
 
         self.x = np.concatenate((block_b,pre,mid,block_a,post))
 
+    def random_three_opt_move_delta_eval(self) -> Tuple[Tuple[int, int, int], TObj]:
+        """Choose random move in 3-opt neighborhood and perform delta evaluation, returning (move, delta_obj).
+
+        The solution is not changed here yet.
+        Primarily used in simulated annealing.
+        """
+        p1 = random.randint(0, len(self.x) - 3)
+        p2 = random.randint(p1 + 1, len(self.x) - 2)
+        p3 = random.randint(p2 + 1, len(self.x) - 1)
+        delta_obj = self.three_opt_move_delta_eval(p1, p2, p3)
+
+        return (p1, p2, p3), delta_obj
+
+    def random_short_block_move_delta_eval(self) -> Tuple[Tuple[int, int], TObj]:
+        """Choose random move in short block neighborhood and perform delta evaluation, returning (move, delta_obj).
+
+        The solution is not changed here yet.
+        Primarily used in simulated annealing.
+        """
+        p1 = random.randint(0, len(self.x) - 2)
+        p2 = random.randint(p1 + 1, len(self.x) - 1)
+        delta_obj = self.short_block_delta_eval(p1, p2)
+
+        return (p1, p2), delta_obj
+
+    def random_single_move_delta_eval(self) -> Tuple[Tuple[int, int], TObj]:
+        """Choose random move in single move neighborhood and perform delta evaluation, returning (move, delta_obj).
+
+        The solution is not changed here yet.
+        Primarily used in simulated annealing.
+        """
+        p1 = random.randint(0, len(self.x) - 1)
+        p2 = random.choice([p for p in range(0, len(self.x)) if p != p1])  # p1 != p2
+
+        delta_obj = self.single_move_delta_eval(p1, p2)
+
+        return (p1, p2), delta_obj
         
     """Unchanged from pymhlib so far"""
 

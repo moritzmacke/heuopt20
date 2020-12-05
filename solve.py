@@ -197,12 +197,11 @@ if __name__ == '__main__':
     elif settings.alg == "sa":
         sa_settings = {
             'mh_titer': -1,
-#            'mh_tciter': 10000, # Shortcut: Abort after 10000 non-improving iterations - remove for real tests
-
-#             should be set in command line probably
-#            'mh_ttime': 15*60 # Limited to 15 min CPU time
+            'mh_sa_T_init': solution.inst.bigM/10,
+            'mh_sa_T_reheat': solution.inst.bigM/50,
+            'mh_sa_reheat_iter': 5*1000*1000
         }
-        alg = SA_CBTSP(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM)], CBTSPSolution.random_move_delta_eval, CBTSPSolution.apply_neighborhood_move, None, sa_settings)
+        alg = SA_CBTSP(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE)], CBTSPSolution.random_two_opt_move_delta_eval, lambda sol,move : sol.apply_two_opt_move(*move), None, sa_settings)
         alg.run()
         logger.info("")
         alg.method_statistics()
