@@ -166,7 +166,7 @@ class HamCycle:
             for i in itertools.chain(last.ns_open, last.ns_path):
                 i.ns_open.discard(last)
                 i.ns_path.add(last)
-            candidates = sorted([p for p in last.ns_open], key=lambda p: (len(p.ns_open),len(p.ns_path))) #neighbors, sort by degree, pick lowest degree
+            candidates = sorted(last.ns_open, key=lambda p: (len(p.ns_open),len(p.ns_path))) #neighbors, sort by degree, pick lowest degree
             if not candidates:
                 break
             last = candidates[0]

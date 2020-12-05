@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import math
+import sys
 from typing import Tuple, Any
 from enum import IntEnum
 
@@ -133,7 +134,8 @@ class CBTSPSolution(PermutationSolution):
                 p, q = self.x[i], self.x[j]
                 if self.inst.weights[p, q] == self.inst.bigM:
                     invalid_edges.append((p, q))
-            raise ValueError("{} invalid edges used in solution: {}".format(len(invalid_edges), invalid_edges))
+            #raise ValueError("{} invalid edges used in solution: {}".format(len(invalid_edges), invalid_edges))
+            print("warning: {} invalid edges used in solution: {}".format(len(invalid_edges), invalid_edges), file=sys.stderr)
 
         if len(self.x) != self.inst.n:
             raise ValueError("Invalid length of solution")
@@ -141,7 +143,7 @@ class CBTSPSolution(PermutationSolution):
 
     """Solution construction functions"""
 
-    def construct(self, par, _result=None, alpha=0.1):
+    def construct(self, par, _result=None, alpha=0.1, timeout=20):
         """Scheduler method that constructs a new solution.
         """
         
@@ -154,19 +156,29 @@ class CBTSPSolution(PermutationSolution):
             self.x[:] = h.construct(alpha)
             self.invalidate()
         elif par == Construct.HAMILTON_PATH:
-            self.hamilton_const_heuristic()
+            """Try to find a hamiltonian cycle with valid edges, ignores edge weights"""
+            h = HamCycle(self.inst)
+            self.x[:] = h.construct(True, timeout)
+            self.invalidate()
         else:
             self.initialize(par)  # random order of nodes
 
-    def hamilton_const_heuristic(self):
-        """Try to find a hamiltonian cycle with valid edges, ignores edge weights
-        """
-        h = HamCycle(self.inst)
-        self.x[:] = h.construct(True)
-        self.invalidate()
+
+    def random_construct(self, par, _result=None):
+               
+        alpha_step = 1.0/len(self.inst.edges)
+        alpha_val = max(par['alpha'], alpha_step)
+        min_alpha = 2*alpha_step       
+
+        self.construct(Construct.GREEDY_EDGE_RANDOM, alpha=alpha_val)
+#        print(alpha_val, self.obj())
+                   
+        alpha_val += max(alpha_step, 0.01)
+        if alpha_val > min(1.0, (alpha_step* max(100,len(self.inst.edges)/10) )):
+            alpha_val = min_alpha
+            
+        par['alpha'] = alpha_val
         
-    def dummy_shake(self, par, result):
-        pass
 
     def shaking(self, par, result):
         """Scheduler method that performs shaking by 'par'-times swapping a pair of randomly chosen cities."""
