@@ -31,6 +31,7 @@ def add_general_arguments_and_parse_settings(default_inst_file: str = '0010.txt'
     parser.add_argument("--incremental_delta", type=str, default="True", help="")
     parser.add_argument("--neighborhood", type=str, default="2opt", help="for local? (2opt, 3opt, 2.5opt, xchg, insert, sblock...)")
     parser.add_argument("--step", type=str, default="best", help="(best, first, random) improvement")
+    parser.add_argument("--out_file", type=str, default="", help="file to write final result")
     parse_settings(seed=seed)
 
 
@@ -236,39 +237,42 @@ if __name__ == '__main__':
     elif settings.alg == "sa":
         sa_settings = {
             'mh_titer': -1,
-#            'mh_tciter': 10000, # Shortcut: Abort after 10000 non-improving iterations - remove for real tests
-
-#             should be set in command line probably
-#            'mh_ttime': 15*60 # Limited to 15 min CPU time
+            'mh_sa_T_init': solution.inst.bigM/10,
+            'mh_sa_T_reheat': solution.inst.bigM/50,
+            'mh_sa_reheat_iter': 5*1000*1000
         }
-        alg = SA_CBTSP(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE)], CBTSPSolution.random_move_delta_eval, CBTSPSolution.apply_neighborhood_move, None, sa_settings)
+
+        alg = SA_CBTSP(solution, [Method("rconst", CBTSPSolution.construct, Construct.HAMILTON_PATH)],
+                       neighborhood.incremental_delta(incremental_eval).random_move_delta, neighborhood.apply_move,
+                       None, sa_settings)
         alg.run()
         logger.info("")
         alg.method_statistics()
         alg.main_results()
+
+        if settings.out_file != "":
+            with open(settings.out_file, "a") as out:
+                out.write("\n" + format_solution("sa",settings.neighborhood,alg.incumbent_time,alg.incumbent_iteration,alg.incumbent))
+                if len(alg.incumbent.get_invalid_edges()) > 0:
+                    out.write(" (!)")
     elif settings.alg == "vnd":
         # Which neighborhoods do we want to use here?
 
-        # 3-opt is too slow on to use on larger instances, but could maybe only enable it on smaller ones?
-        # 2.5-opt and insertion together does not make sense as it's just 2-opt plus some insertion moves
-        # Otherwise maybe restrict to : 2opt, insert, xchg, short block ?
-        ms = [ Method("li_2opt_best", CBTSPSolution.local_improve, (NeighborhoodSpec.TWO_OPT, Step.BEST)),
-#              Method("li_2.5opt_best", CBTSPSolution.local_improve, (NeighborhoodSpec.TWO_HALF_OPT, Step.BEST)),
-               Method("li_xchg_best", CBTSPSolution.local_improve, (NeighborhoodSpec.TWO_XCHG, Step.BEST)),
-               Method("li_smove_best", CBTSPSolution.local_improve, (NeighborhoodSpec.SINGLE_INSERT, Step.BEST)),
-               Method("li_sblock_best", CBTSPSolution.local_improve, (NeighborhoodSpec.SHORT_BLOCK, Step.BEST)) ]
-        
-        # at 400 points one iteration of 3opt best neighbor search takes almost a minute on my PC
-        threshold = 500 
-        if len(solution.x) < threshold:
-            ms += [Method("li_3opt_best", CBTSPSolution.local_improve, (NeighborhoodSpec.THREE_OPT, Step.BEST))]
-        
-        # Not sure about construction method, if run repeatedly random construction can sometimes give better 
-        # results with small instances but larger instances will be bad or infeasible
-        alg = GVNS(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM)], random.sample(ms, len(ms)), [])
+        ms = [ Method("li_2opt_best", CBTSPSolution.local_improve, (NeighborhoodSpec.TWO_OPT.incremental_delta(incremental_eval), Step.BEST)),
+               Method("li_xchg_best", CBTSPSolution.local_improve, (NeighborhoodSpec.TWO_XCHG.incremental_delta(incremental_eval), Step.BEST)),
+               Method("li_smove_best", CBTSPSolution.local_improve, (NeighborhoodSpec.SINGLE_INSERT.incremental_delta(incremental_eval), Step.BEST)),
+               Method("li_sblock_best", CBTSPSolution.local_improve, (NeighborhoodSpec.SHORT_BLOCK.incremental_delta(incremental_eval), Step.BEST)) ]
+
+        alg = GVNS(solution, [Method("rconst", CBTSPSolution.construct, Construct.HAMILTON_PATH)], ms, [])
         alg.run()
         logger.info("")
         alg.method_statistics()
         alg.main_results()
+
+        if settings.out_file != "":
+            with open(settings.out_file, "a") as out:
+                out.write("\n" + format_solution("vnd","2opt->xchg->smove->sblock", alg.run_time, alg.iteration, alg.incumbent))
+                if len(alg.incumbent.get_invalid_edges()) > 0:
+                    out.write(" (!)")
 
 #    print(solution, solution.obj())

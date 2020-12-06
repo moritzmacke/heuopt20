@@ -64,7 +64,7 @@ class CBTSPInstance:
 
         self.weights = weights
         self.n = n
-        self.valid_threshold = maxw
+        self.valid_threshold = max(abs(minw), abs(maxw))
         self.bigM = M
         self.edges = edges
 
@@ -120,21 +120,25 @@ class CBTSPSolution(PermutationSolution):
         w += self.inst.weights[self.x[-1]][self.x[0]]
         return w  # abs(w)
 
+    def get_invalid_edges(self):
+        """Get the list of invalid edges in solution.
+        """
+        invalid_edges = []
+        for i in range(self.inst.n):
+            j = (i + 1) % self.inst.n
+            p, q = self.x[i], self.x[j]
+            if self.inst.weights[p, q] == self.inst.bigM:
+                invalid_edges.append((p, q))
+
+        return invalid_edges
+
     def check(self):
         """Check if valid solution.
 
         :raises ValueError: if problem detected.
         """
-
-        # ?
-        if self.obj() > self.inst.valid_threshold:
-            invalid_edges = []
-            for i in range(self.inst.n):
-                j = (i + 1) % self.inst.n
-                p, q = self.x[i], self.x[j]
-                if self.inst.weights[p, q] == self.inst.bigM:
-                    invalid_edges.append((p, q))
-            #raise ValueError("{} invalid edges used in solution: {}".format(len(invalid_edges), invalid_edges))
+        invalid_edges = self.get_invalid_edges()
+        if len(invalid_edges) > 0:
             print("warning: {} invalid edges used in solution: {}".format(len(invalid_edges), invalid_edges), file=sys.stderr)
 
         if len(self.x) != self.inst.n:
@@ -199,11 +203,6 @@ class CBTSPSolution(PermutationSolution):
             self.neighborhood_search(neighbor, step)
         else:
             raise NotImplementedError
-
-    def random_move_delta_eval(self) -> Tuple[Any, TObj]:
-        """Choose a random move and perform delta evaluation for it, return (move, delta_obj)."""
-        return self.random_two_opt_move_delta_eval()
-
     
     def apply_neighborhood_move(self, move):
         """This method applies a given neighborhood move accepted by SA,
