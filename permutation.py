@@ -17,22 +17,29 @@ class Step(IntEnum):
     
 class NeighborhoodSpec:
        
-    def __init__(self, generate, apply_function, reverse_function, delta_function = None):
+    def __init__(self, generate, apply_function, reverse_function, delta_function = None, random_move = None):
         self.generate_moves = generate
         self.__apply_move_func = apply_function
         self.__reverse_move_func = reverse_function
         self.__delta_eval_func = delta_function
+        self.__random_move = random_move
         
     def incremental_delta(self, use_delta):
         return NeighborhoodSpec(self.generate_moves, self.__apply_move_func, 
-                                self.__reverse_move_func, self.__delta_eval_func if use_delta else None)
+                                self.__reverse_move_func, self.__delta_eval_func if use_delta else None,
+                                self.__random_move)
         
     def apply_move(self, solution, move):
         self.__apply_move_func(solution, *move)
         
     def reverse_move(self, solution, move):
         self.__reverse_move_func(solution, *move)
-        
+
+    def random_move_delta(self, solution):
+        move = self.__random_move(solution)
+
+        return move, self.delta_eval(solution, move)
+
     def delta_eval(self, solution, move):
         if self.__delta_eval_func:
             delta = self.__delta_eval_func(solution, *move)
@@ -445,31 +452,59 @@ class PermutationSolution(VectorSolution, ABC):
 
         self.x = np.concatenate((block_b,pre,mid,block_a,post))
 
-        
-    """Unchanged from pymhlib so far"""
+    def random_three_opt_move(self) -> Tuple[int, int, int]:
+        """Choose random move in 3-opt neighborhood.
 
-    def random_two_exchange_move_delta_eval(self) -> Tuple[Tuple[int, int], TObj]:
-        """Choose random move in the two-exchange neighborhood and perform delta eval., returning (p1, p2, delta_obj).
+        Used with delta evaluation in simulated annealing.
+        """
+        p1 = random.randint(0, len(self.x) - 3)
+        p2 = random.randint(p1 + 1, len(self.x) - 2)
+        p3 = random.randint(p2 + 1, len(self.x) - 1)
 
-        The solution is not changed here yet.
-        Primarily used in simulated annealing.
+        return (p1, p2, p3)
+
+    def random_short_block_move(self) -> Tuple[int, int]:
+        """Choose random move in short block neighborhood.
+
+        Used with delta evaluation in simulated annealing.
         """
         p1 = random.randint(0, len(self.x) - 2)
         p2 = random.randint(p1 + 1, len(self.x) - 1)
-        delta_obj = self.two_exchange_move_delta_eval(p1, p2)
-        return (p1, p2), delta_obj
 
-    def random_two_opt_move_delta_eval(self) -> Tuple[Tuple[int, int], TObj]:
-        """Choose random move in 2-opt neighborhood and perform delta evaluation, returning (move, delta_obj).
+        return (p1, p2)
 
-        The solution is not changed here yet.
-        Primarily used in simulated annealing.
+    def random_single_insert_move(self) -> Tuple[int, int]:
+        """Choose random move in single insert neighborhood.
+
+        Used with delta evaluation in simulated annealing.
+        """
+        p1 = random.randint(0, len(self.x) - 1)
+        p2 = random.choice([p for p in range(0, len(self.x)) if p != p1])  # p1 != p2
+
+        return (p1, p2)
+
+    def random_two_exchange_move(self) -> Tuple[int, int]:
+        """Choose random move in the two-exchange neighborhood.
+
+        Used with delta evaluation in simulated annealing.
+        """
+        p1 = random.randint(0, len(self.x) - 2)
+        p2 = random.randint(p1 + 1, len(self.x) - 1)
+
+        return (p1, p2)
+
+    def random_two_opt_move(self) -> Tuple[int, int]:
+        """Choose random move in 2-opt neighborhood.
+
+        Used with delta evaluation in simulated annealing.
         """
         p1 = random.randrange(len(self.x)-1)
         p2 = random.randint(p1+1, len(self.x)-1)
-        delta_obj = self.two_opt_move_delta_eval(p1, p2)
-        return (p1, p2), delta_obj
-    
+
+        return (p1, p2)
+
+    """Unchanged from pymhlib so far"""
+
     def partially_mapped_crossover(self, other: 'PermutationSolution') -> 'PermutationSolution':
         """Partially mapped crossover (PMX).
 
@@ -598,29 +633,34 @@ class PermutationSolution(VectorSolution, ABC):
 NeighborhoodSpec.TWO_OPT = NeighborhoodSpec(PermutationSolution.generate_ordered_tuples,
                                             PermutationSolution.apply_two_opt_move,
                                             PermutationSolution.apply_two_opt_move,
-                                            PermutationSolution.two_opt_move_delta_eval)
+                                            PermutationSolution.two_opt_move_delta_eval,
+                                            PermutationSolution.random_two_opt_move)
 
 NeighborhoodSpec.TWO_XCHG = NeighborhoodSpec(PermutationSolution.generate_ordered_tuples,
                                             PermutationSolution.apply_two_exchange_move,
                                             PermutationSolution.apply_two_exchange_move,
-                                            PermutationSolution.two_exchange_move_delta_eval)
+                                            PermutationSolution.two_exchange_move_delta_eval,
+                                            PermutationSolution.random_two_exchange_move)
 
 NeighborhoodSpec.SINGLE_INSERT = NeighborhoodSpec(PermutationSolution.generate_ordered_tuples,
                                             PermutationSolution.apply_single_insert_move,
                                             PermutationSolution.reverse_single_insert_move,
-                                            PermutationSolution.single_insert_move_delta_eval)
+                                            PermutationSolution.single_insert_move_delta_eval,
+                                            PermutationSolution.random_single_insert_move)
 
 NeighborhoodSpec.SHORT_BLOCK = NeighborhoodSpec(PermutationSolution.generate_short_block_neighborhood,
                                             PermutationSolution.apply_short_block_move,
                                             PermutationSolution.reverse_short_block_move,
-                                            PermutationSolution.short_block_delta_eval)
+                                            PermutationSolution.short_block_delta_eval,
+                                            PermutationSolution.random_short_block_move)
 
 NeighborhoodSpec.THREE_OPT = NeighborhoodSpec(PermutationSolution.generate_three_opt_neighborhood,
                                             PermutationSolution.apply_three_opt_move,
                                             PermutationSolution.reverse_three_opt_move,
-                                            PermutationSolution.three_opt_move_delta_eval)
+                                            PermutationSolution.three_opt_move_delta_eval,
+                                            PermutationSolution.random_three_opt_move)
 
 NeighborhoodSpec.TWO_HALF_OPT = NeighborhoodSpec(PermutationSolution.generate_two_half_opt_neighborhood,
                                             PermutationSolution.apply_two_half_opt_move,
                                             PermutationSolution.reverse_two_half_opt_move,
-                                            PermutationSolution.two_half_opt_move_delta_eval)
+                                            PermutationSolution.two_half_opt_move_delta_eval) #No random move, don't use for SA
