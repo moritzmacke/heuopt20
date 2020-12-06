@@ -197,8 +197,15 @@ if __name__ == '__main__':
         alg.main_results()
         
         print("~~~solution~~~", format_solution("grasp", f"{settings.neighborhood}_{settings.step}", alg.run_time, alg.iteration, alg.incumbent))
-        
+
+        if settings.out_file != "":
+            with open(settings.out_file, "a") as out:
+                out.write("\n" + format_solution("grasp", f"{settings.neighborhood}_{settings.step}", alg.run_time, alg.iteration, alg.incumbent))
+                if len(alg.incumbent.get_invalid_edges()) > 0:
+                    out.write(" (!)")
+
     elif settings.alg.startswith('lsearch'):
+
         #if no shake method is given it always stops after one non-improving iteration
         #no matter what. So using a dummy to make it work for random step, but not a great solution.
         #There is also no way to keep searching past a local optimum with other step
