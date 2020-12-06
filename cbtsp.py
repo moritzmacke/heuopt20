@@ -143,7 +143,7 @@ class CBTSPSolution(PermutationSolution):
 
     """Solution construction functions"""
 
-    def construct(self, par, _result=None, alpha=0.1, timeout=20):
+    def construct(self, par, _result=None, alpha=0.1, timeout=60):
         """Scheduler method that constructs a new solution.
         """
         
@@ -179,6 +179,8 @@ class CBTSPSolution(PermutationSolution):
             
         par['alpha'] = alpha_val
         
+    def dummy_shake(self, par, result):
+        pass
 
     def shaking(self, par, result):
         """Scheduler method that performs shaking by 'par'-times swapping a pair of randomly chosen cities."""

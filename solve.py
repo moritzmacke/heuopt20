@@ -25,7 +25,7 @@ def add_general_arguments_and_parse_settings(default_inst_file: str = '0010.txt'
     """
     parser = get_settings_parser()
     parser.add_argument("--alg", type=str, default='vnd', help='optimization algorithm to be used '
-                                                                '(just_const, just_rconst, grasp, lsearch, gvns)')
+                                                                '(just_const, just_rconst, grasp, lsearch, vnd, sa, gvns)')
     parser.add_argument("--inst_file", type=str, default=default_inst_file,
                         help='problem instance file')
     parser.add_argument("--incremental_delta", type=str, default="True", help="")
@@ -92,13 +92,23 @@ def xrun_rconst(solution, timeout):
     min_alpha = 2*alpha_step
     avg_alpha = alpha_step
     iterations = 0
+    
+    feasible = []
+    feasible_times = []
         
     while elapsed < settings.mh_ttime:
+        iter_start = time.process_time()
         solution.construct(Construct.GREEDY_EDGE_RANDOM, alpha=alpha_val)
-        elapsed = time.process_time() - start
+        iter_end = time.process_time()
+        elapsed = iter_end - start
 #        print(elapsed, "alpha", alpha_val, "obj", solution.obj(), "best", best_sol.obj())
 
         obj_val = abs(solution.obj())
+        
+        if solution.obj() <= solution.inst.valid_threshold:
+            feasible.append(obj_val)
+            feasible_times.append(iter_end - iter_start)
+        
         if obj_val not in top_solutions and alpha_val != 0:
             cum_alpha += alpha_val
             top_solutions[obj_val] = alpha_val
@@ -110,10 +120,7 @@ def xrun_rconst(solution, timeout):
         else:
             avg_alpha += alpha_step
             avg_alpha = min(avg_alpha, 1.0)
-        
-#        print(avg_alpha, top_solutions)
-#        print(avg_alpha)
-        
+                
         if solution.is_better(best_sol):
 #            print("success at", alpha_val)
             best_sol, solution = solution, best_sol
@@ -121,8 +128,21 @@ def xrun_rconst(solution, timeout):
         alpha_val = random.uniform(min_alpha, min(1.0, avg_alpha + max(min_alpha, 2*avg_alpha)) )
             
         iterations += 1
+        
+    count = len(feasible)
+    obj_std = np.std(feasible) if count else 0
+    obj_mean = np.mean(feasible) if count else 0
+    obj_min = min(feasible) if count else 0
+    obj_max = max(feasible) if count else 0
+    t_std = np.std(feasible_times) if count else 0
+    t_mean = np.mean(feasible_times) if count else 0
+    t_min = min(feasible_times) if count else 0
+    t_max = max(feasible_times) if count else 0
     
-    return elapsed, iterations, best_sol
+    times = (t_mean, t_min, t_max, t_std)
+    objs = (obj_mean, obj_min, obj_max, obj_std)
+    
+    return elapsed, iterations, count, objs, times, best_sol
 
 if __name__ == '__main__':
     
@@ -151,9 +171,21 @@ if __name__ == '__main__':
         print("~~~solution~~~",format_solution("dconst", "na", total_time, -1, solution))
         solution.check()
     elif settings.alg == 'just_rconst':
-        total_time, iterations, sol = xrun_rconst(solution, settings.mh_ttime)
-        print("~~~solution~~~", format_solution("rconst", "na", total_time, iterations, sol))
-        sol.check()
+        total_time, iterations, num_feasible, objs, times, best_sol = xrun_rconst(solution, settings.mh_ttime)
+        
+        s = f"rconst;na;{len(best_sol.x)};{total_time};{iterations};{num_feasible};"
+        obj_mean, obj_min, obj_max, obj_std = objs
+        s += f"{obj_mean};{obj_min};{obj_max};{obj_std};"
+        
+        t_mean, t_min, t_max, t_std = times
+        s += f"{t_mean};{t_max};{t_min};{t_std};"
+        
+        s += f"{abs(best_sol.obj())};"
+        s += " ".join(str(v) for v in best_sol.x)
+        
+        print("~~~solution~~~", s)       
+        
+        best_sol.check()
     elif settings.alg == 'grasp':
         alg = GRASP(solution, Method("rconst", CBTSPSolution.random_construct, {'alpha': 0.0} ), 
                     Method(f"li_{settings.neighborhood}_{settings.step}", CBTSPSolution.local_improve, 
@@ -165,23 +197,30 @@ if __name__ == '__main__':
         
         print("~~~solution~~~", format_solution("grasp", f"{settings.neighborhood}_{settings.step}", alg.run_time, alg.iteration, alg.incumbent))
         
-    elif settings.alg == 'lsearch':
+    elif settings.alg.startswith('lsearch'):
         #if no shake method is given it always stops after one non-improving iteration
         #no matter what. So using a dummy to make it work for random step, but not a great solution.
         #There is also no way to keep searching past a local optimum with other step
         #functions as no worse solution than current best is ever tried tried and they always
         #return the same solution in a local optimum.
-        ls_settings = {'mh_tciter': -1 if step_func == Step.RANDOM else 1} 
+        ls_settings = {'mh_tciter': -1} 
+        
+        li_meth = [Method(f"li_{settings.neighborhood}_{settings.step}", CBTSPSolution.local_improve, 
+                           (neighborhood.incremental_delta(incremental_eval), step_func))]
+        
+        if settings.alg == 'lsearch-r':
+            sh_meth = [Method(f"sh_{settings.neighborhood}_random", CBTSPSolution.local_improve, 
+                           (neighborhood.incremental_delta(incremental_eval), Step.RANDOM))]
+        else:
+            sh_meth = []
         
         alg = GVNS(solution, [Method("ch_ham_path", CBTSPSolution.construct, Construct.HAMILTON_PATH)],
-                   [Method(f"li_{settings.neighborhood}_{settings.step}", CBTSPSolution.local_improve, 
-                           (neighborhood.incremental_delta(incremental_eval), step_func))],
-                   [Method(f"sh_{settings.neighborhood}_random", CBTSPSolution.local_improve, 
-                           (neighborhood.incremental_delta(incremental_eval), Step.RANDOM))], ls_settings)
+                   li_meth, sh_meth, ls_settings)
+
         alg.run()
         logger.info("")
         alg.method_statistics()
-#        alg.main_results()
+        alg.main_results()
         
         print("~~~solution~~~", format_solution("lsearch", f"ham_{settings.neighborhood}_{settings.step}", alg.run_time, alg.iteration, alg.incumbent))
         
@@ -202,7 +241,7 @@ if __name__ == '__main__':
 #             should be set in command line probably
 #            'mh_ttime': 15*60 # Limited to 15 min CPU time
         }
-        alg = SA_CBTSP(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE_RANDOM)], CBTSPSolution.random_move_delta_eval, CBTSPSolution.apply_neighborhood_move, None, sa_settings)
+        alg = SA_CBTSP(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE)], CBTSPSolution.random_move_delta_eval, CBTSPSolution.apply_neighborhood_move, None, sa_settings)
         alg.run()
         logger.info("")
         alg.method_statistics()
