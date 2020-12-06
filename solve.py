@@ -31,6 +31,7 @@ def add_general_arguments_and_parse_settings(default_inst_file: str = '0010.txt'
     parser.add_argument("--incremental_delta", type=str, default="True", help="")
     parser.add_argument("--neighborhood", type=str, default="2opt", help="for local? (2opt, 3opt, 2.5opt, xchg, insert, sblock...)")
     parser.add_argument("--step", type=str, default="best", help="(best, first, random) improvement")
+    parser.add_argument("--out_file", type=str, default="", help="file to write final result")
     parse_settings(seed=seed)
 
 
@@ -201,11 +202,19 @@ if __name__ == '__main__':
             'mh_sa_T_reheat': solution.inst.bigM/50,
             'mh_sa_reheat_iter': 5*1000*1000
         }
-        alg = SA_CBTSP(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE)], CBTSPSolution.random_two_opt_move_delta_eval, lambda sol,move : sol.apply_two_opt_move(*move), None, sa_settings)
+        alg = SA_CBTSP(solution, [Method("rconst", CBTSPSolution.construct, Construct.GREEDY_EDGE)],
+                       neighborhood.incremental_delta(incremental_eval).random_move_delta, neighborhood.apply_move,
+                       None, sa_settings)
         alg.run()
         logger.info("")
         alg.method_statistics()
         alg.main_results()
+
+        if settings.out_file != "":
+            with open(settings.out_file, "a") as out:
+                out.write("\n" + format_solution("sa",settings.neighborhood,alg.incumbent_time,alg.incumbent_iteration,alg.incumbent))
+                if len(alg.incumbent.get_invalid_edges()) > 0:
+                    out.write(" (!)")
     elif settings.alg == "vnd":
         # Which neighborhoods do we want to use here?
 
